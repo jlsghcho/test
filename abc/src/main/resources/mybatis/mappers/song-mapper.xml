@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.ems.event.dao.EmsEventDao">
+
+
+	<select  id="selectEventInfo" parameterType="int" resultType="emsEvent">
+		<![CDATA[
+			SELECT 
+				EMS_EVENT_SEQ AS emsEventSeq,
+				EVENT_TYPE	AS eventType,
+				EVENT_TEMPLATE	AS eventTemplate,
+				TITLE AS title,
+				ENROLLED AS enrolled,
+				ENROLLED_COURSE AS enrolledCourse,
+				VIEW_CNT AS viewCnt,
+				ACTIVITY_CNT AS activityCnt,
+				EVENT_OPEN_DT AS eventOpenDt,
+				EVENT_CLOSE_DT AS eventCloseDt,
+				ACTIVITY_START_DT AS activityStartDt,
+				ACTIVITY_END_DT	AS activityEndDt,
+				WINNER_ANNOUNCE_DT AS winnerAnnounceDt,  
+				TO_CHAR(TO_DATE (ACTIVITY_START_DT, 'YYYYMMDD')+2, 'YYYYMMDD') AS openDt1,
+                TO_CHAR(TO_DATE (ACTIVITY_START_DT, 'YYYYMMDD')+9, 'YYYYMMDD') AS openDt2,
+				TO_CHAR(TO_DATE (ACTIVITY_START_DT, 'YYYYMMDD')+16, 'YYYYMMDD') AS openDt3,
+				EVENT_URL AS eventUrl,
+				WINNER_ANNOUNCE_URL	AS winnerAnnounceUrl,
+				REG_USER_SEQ AS regUserSeq,
+				REG_TS AS regTs,
+				MOD_USER_SEQ AS modUserSeq,
+				MOD_TS AS modeTs
+			FROM TB_EMS_EVENT 
+			WHERE EMS_EVENT_SEQ=#{emsEventSeq}
+		]]>
+	</select>
+	
+	<select id="selectTotSongPlayCnt" parameterType="int" resultType="int">
+		<![CDATA[
+		SELECT NVL(SUM(P.PLAY_CNT), 0) AS totCnt
+		FROM TB_EMS_EVENT_SONG S, TB_EMS_EVENT_SONG_PLAY P
+		WHERE P.EVENT_SONG_SEQ = S.EVENT_SONG_SEQ AND 
+		      S.EMS_EVENT_SEQ = #{emsEventSeq}
+		]]>
+	</select>
+		
+	<select id="selectSongPlayCnt" resultType="eventSongUserData">
+		<![CDATA[
+			SELECT 
+			       COUNT(P.PLAY_CNT) AS cardCntAll 
+			     , NVL(SUM(P.PLAY_CNT), 0) AS playCntAll
+			     , NVL(SUM(DECODE(S.SONG_TYPE, 'HIDDEN', 0, 1)), 0) AS cardCnt 
+			     , NVL(SUM(DECODE(S.SONG_TYPE, 'HIDDEN', 0, P.PLAY_CNT)), 0) AS playCnt
+			    
+			FROM TB_EMS_EVENT_SONG S,  (
+			    SELECT PLAY_CNT, EVENT_SONG_SEQ FROM TB_EMS_EVENT_SONG_PLAY     
+			    WHERE USER_SEQ = #{userSeq} 
+			) P
+			WHERE S.EMS_EVENT_SEQ = #{emsEventSeq} 
+			  AND S.EVENT_SONG_SEQ = P.EVENT_SONG_SEQ    
+		]]>
+	</select>
+	
+	<select id="selectSongPlayCnt2" resultType="int">
+		<![CDATA[
+			SELECT  PLAY_CNT 
+			FROM TB_EMS_EVENT_SONG_PLAY 
+			WHERE EVENT_SONG_SEQ = #{eventSongSeq} 
+			AND USER_SEQ = #{userSeq}
+			and rownum = 1
+		]]>
+	</select>
+	
+	<select id="selectSongList" resultType="eventSong">
+		<![CDATA[
+			SELECT 
+			    A.EVENT_SONG_SEQ AS eventSongSeq,			    
+			    A.ORDER_NUM AS orderNum,
+			    A.FILE_NAME AS fileName,
+			    A.TITLE AS title,			    
+			    DECODE(A.SONG_TYPE, 'MUSIC', 0, 1) AS songType,
+			    NVL(B.PLAY_CNT, 0) AS playYn,
+			    NVL(B.PLAY_CNT, 0) AS playCnt,
+			    GROUP_FG as groupFg,
+			    DECODE(ROW_NUMBER() OVER(PARTITION BY GROUP_FG ORDER BY ORDER_NUM), 1, 1, 0) AS firstFg,
+			    DECODE(ROW_NUMBER() OVER(PARTITION BY GROUP_FG ORDER BY ORDER_NUM DESC), 1, 1, 0) AS lastFg
+			FROM TB_EMS_EVENT_SONG A, 
+			    (
+					SELECT PLAY_CNT, EVENT_SONG_SEQ FROM TB_EMS_EVENT_SONG_PLAY 
+		]]>
+				<choose>
+					<when test="userSeq != null and userSeq != ''" >WHERE USER_SEQ = #{userSeq}</when> 
+					<otherwise>WHERE USER_SEQ = NULL </otherwise>
+				</choose>	
+		<![CDATA[			 
+				) B
+			WHERE A.EMS_EVENT_SEQ= #{emsEventSeq} AND
+				  A.SONG_TYPE= #{songType} AND
+			      A.EVENT_SONG_SEQ = B.EVENT_SONG_SEQ (+)
+			ORDER BY A.EVENT_SONG_SEQ ASC
+		]]>
+	</select>
+	
+	<insert id="mergeSongPlay">
+		<![CDATA[
+			MERGE INTO TB_EMS_EVENT_SONG_PLAY 
+			USING DUAL
+			ON (EVENT_SONG_SEQ = #{eventSongSeq} AND USER_SEQ = #{userSeq})
+			WHEN MATCHED THEN
+	    		UPDATE SET PLAY_CNT = PLAY_CNT+1
+			WHEN NOT MATCHED THEN 
+	    		INSERT (EVENT_SONG_PLAY_SEQ, EVENT_SONG_SEQ, USER_SEQ, PLAY_CNT) 
+	    		VALUES (EVENT_SONG_PLAY_SEQ.NEXTVAL, #{eventSongSeq}, #{userSeq}, 1)
+		]]>
+	</insert>
+	
+
+	
+	<select id="selectChessUser" resultType="int">
+		<![CDATA[	
+			SELECT (
+				CASE
+					WHEN COUNT(1) > 0 THEN 1
+					ELSE 0
+				END
+			)
+			FROM TB_CLS_USER CU, TB_CLS_MST C, TB_DEPT D, TB_US_USER U
+			WHERE
+				U.USER_SEQ = CU.USER_SEQ AND
+                   CU.USER_SEQ = #{userSeq} AND
+				CU.CLS_SEQ = C.CLS_SEQ AND
+				C.DEPT_SEQ = D.DEPT_SEQ AND
+				D.GT_DEPT_COURSE = 'DP2001' AND
+				C.GT_CLS_STATE = 'CL1001' AND
+				TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT AND
+				TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN C.START_DT AND C.END_DT 
+         ]]>
+	</select> 
+	
+</mapper>

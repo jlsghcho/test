@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.ace.dao.MapDao">
+
+
+	<select id="selectMapInfo" parameterType="mapModel" resultType="mapModel">
+		<![CDATA[
+			 SELECT NVL(VIEW_CNT, 0) AS viewCnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MAP_MISSION
+			          WHERE MISSION_FG = '1' ) AS mission1Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MAP_MISSION
+			          WHERE MISSION_FG = '2' ) AS mission2Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MAP_MISSION
+			          WHERE MISSION_FG = '1' 
+			            AND GOODS_FG= '1') AS goods1Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MAP_MISSION
+			          WHERE MISSION_FG = '1' 
+			            AND GOODS_FG= '2' ) AS goods2Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MAP_MISSION
+			          WHERE MISSION_FG = '1' 
+			            AND GOODS_FG= '3' ) AS goods3Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MAP_MISSION
+			          WHERE MISSION_FG = '1' 
+			            AND GOODS_FG= '4' ) AS goods4Cnt
+			   FROM TB_EVENT_INFO A
+			  WHERE EVENT_SEQ = #{eventSeq}
+		]]>
+	</select>  
+
+	<select id="selectUserMissionInfo" parameterType="mapModel" resultType="mapModel">
+		<![CDATA[
+
+SELECT A.USER_SEQ AS userSeq
+     , A.USER_NM AS userNm
+     , B.DEPT_NM AS deptNm
+     , B.DEPT_SEQ AS deptSeq
+     , B.CLS_SEQ AS clsSeq
+     , NVL(C.selBookNm1, '-') AS selBookNm1
+     , NVL(C.selGoodsFg1, 'question') AS selGoodsFg1
+     , NVL(C.selBookNm2, '-') AS selBookNm2
+     , NVL(C.selGoodsFg2, 'question') AS selGoodsFg2
+     , NVL(C.selBookNm3, '-') AS selBookNm3
+     , NVL(C.selGoodsFg3, 'question') AS selGoodsFg3
+     , (SELECT COUNT(1) 
+          FROM TB_EVENT_MAP_MISSION A
+         WHERE user_seq = #{userSeq}
+           AND MISSION_FG = '2') AS mission2Cnt
+  FROM TB_US_USER A
+     , (  SELECT USER_SEQ
+               , MAX(DECODE(RNUM, 1, DEPT_SEQ, '')) AS DEPT_SEQ
+               , MAX(DECODE(RNUM, 1, DEPT_NM, '')) AS DEPT_NM
+               , MAX(DECODE(RNUM, 1, CLS_SEQ, '')) AS CLS_SEQ
+            FROM (
+                    SELECT CU.USER_SEQ
+                         , CM.DEPT_SEQ 
+                         , (SELECT F.DELEGATE_WEB_NAME FROM GAIMS.TB_DEPT F WHERE F.DEPT_SEQ= D.DELEGATE_WEB_DEPT_SEQ) AS DEPT_NM
+                         , CM.CLS_SEQ
+                         , ROW_NUMBER() OVER(PARTITION BY CU.USER_SEQ ORDER BY DECODE(DECODE(CM.DEPT_SEQ, '10003830', '1', D.GT_PAY_SHARE), NULL, 0, 1), D.GT_DEPT_TYPE, D.GT_DEPT_COURSE DESC, CU.START_DT DESC) AS RNUM
+                      FROM TB_CLS_USER CU, TB_CLS_MST CM, TB_DEPT D
+                     WHERE CM.CLS_SEQ = CU.CLS_SEQ
+                       AND D.DEPT_SEQ = CM.DEPT_SEQ
+                       AND CM.GT_CLS_WORK_TYPE = 'CL2001'
+                       AND CM.GT_CLS_STATE = 'CL1001' -- 반상태 수업
+                       AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT -- 오늘 회원 수업 기간 확인
+                       AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT -- 오늘 반 수업 기간 확인
+                       AND CU.USER_SEQ = #{userSeq}
+                  GROUP BY CU.USER_SEQ
+                         , CM.DEPT_SEQ 
+                         , CM.CLS_SEQ
+                         , D.DELEGATE_WEB_DEPT_SEQ
+                         , D.GT_PAY_SHARE
+                         , D.GT_DEPT_TYPE
+                         , D.GT_DEPT_COURSE
+                         , CU.START_DT         )
+        GROUP BY USER_SEQ  )      B
+     , (  SELECT AA.USER_SEQ
+               , NVL(MAX(DECODE(RNUM, 1, AA.BOOK_NM1, '')), '-') AS selBookNm1
+               , NVL(MAX(DECODE(RNUM, 1, AA.GOODS_FG, '')), 'question') AS selGoodsFg1
+               , NVL(MAX(DECODE(RNUM, 2, AA.BOOK_NM1, '')), '-') AS selBookNm2
+               , NVL(MAX(DECODE(RNUM, 2, AA.GOODS_FG, '')), 'question') AS selGoodsFg2
+               , NVL(MAX(DECODE(RNUM, 3, AA.BOOK_NM1, '')), '-') AS selBookNm3
+               , NVL(MAX(DECODE(RNUM, 3, AA.GOODS_FG, '')), 'question') AS selGoodsFg3
+            FROM (
+                    SELECT B.BOOK_NM1
+                         , DECODE(A.GOODS_FG, 1, 'abc', 2, 'mega', 3, 'ice', 4, 'note', 'question')  AS GOODS_FG
+                         , A.USER_SEQ
+                         , ROW_NUMBER() OVER(ORDER BY REG_DT) AS RNUM
+                      FROM TB_EVENT_MAP_MISSION A
+                         , TB_EVENT_MAP B 
+                     WHERE A.MISSION_FG = '1'
+                       AND A.USER_SEQ = #{userSeq}
+                       AND A.EVENT_MAP_SEQ = B.EVENT_MAP_SEQ ) AA
+        GROUP BY AA.USER_SEQ    ) C
+ WHERE A.USER_SEQ = B.USER_SEQ (+)
+   AND A.USER_SEQ = C.USER_SEQ (+)
+   AND A.USER_SEQ = #{userSeq}
+     
+     
+     
+     
+
+		]]>
+	</select>
+	
+	<select id="selectMission1Info" parameterType="mapModel" resultType="mapModel">
+		<![CDATA[
+	 		 SELECT EVENT_MAP_SEQ as eventMapSeq,
+			         MAP_CD as mapCd,
+			         SET_CD as setCd,
+			         BOOK_NM1 as bookNm1,
+			         BOOK_NM2 as bookNm2,
+			         TITLE1 as title1,
+			         QUESTION1 as question1,
+			         TITLE2 as title2,
+			         QUESTION2 as question2,
+			         TITLE3 as title3,
+			         QUESTION3 as question3,
+			         TITLE4 as title4,
+			         QUESTION4 as question4,
+			         ANSWER as answer,
+			         PDF_FILE_PATH as pdfFilePath 
+			    FROM (
+			          SELECT A.EVENT_MAP_SEQ,
+			                 A.MAP_CD,
+			                 A.SET_CD,
+			                 A.BOOK_NM1,
+			                 A.BOOK_NM2,
+			                 A.TITLE1,
+			                 A.QUESTION1,
+			                 A.TITLE2,
+			                 A.QUESTION2,
+			                 A.TITLE3,
+			                 A.QUESTION3,
+			                 A.TITLE4,
+			                 A.QUESTION4,
+			                 A.ANSWER,
+			                 A.PDF_FILE_PATH,
+			                 ROUND(DBMS_RANDOM.VALUE(1, 10)) AS ord
+			            FROM TB_EVENT_MAP A
+			           WHERE 1=1
+			           
+		]]>   
+		<if test="eventMapSeq == ''"> 
+               AND MAP_CD = #{mapCd}
+		</if> 
+		<if test="eventMapSeq != ''"> 
+               AND EVENT_MAP_SEQ = #{eventMapSeq}
+		</if> 
+ 
+	<![CDATA[	
+			            AND NOT EXISTS (SELECT 1
+			                    FROM TB_EVENT_MAP_MISSION B 
+			                   WHERE B.MISSION_FG = '1'
+			                     AND B.EVENT_MAP_SEQ = A.EVENT_MAP_SEQ
+			                     AND B.USER_SEQ = #{userSeq} )
+			          ORDER BY ORD    )
+			  WHERE ROWNUM = 1
+  
+		]]>
+	</select>
+       
+	<select id="selectMissionCnt" parameterType="mapModel" resultType="int">
+	<![CDATA[	
+		
+             SELECT COUNT(1) as cnt
+			   FROM TB_EVENT_MAP_MISSION A
+			  WHERE MISSION_FG = #{missionFg}
+			    AND USER_SEQ = #{userSeq}
+		]]>   
+		
+		<if test='missionFg == "2"'>
+               AND TO_CHAR(REG_DT, 'YYYYMMDD') = TO_CHAR(SYSDATE, 'YYYYMMDD')
+        </if>
+	</select>
+	 
+	<insert id="insertMapMission" parameterType="mapModel">
+		<![CDATA[
+		  INSERT INTO TB_EVENT_MAP_MISSION ( EVENT_MAP_MISSION_SEQ,MISSION_FG,USER_SEQ,DEPT_SEQ,CLS_SEQ,EVENT_MAP_SEQ,GOODS_FG,ANSWER,REG_DT )
+          VALUES (EVENT_MAP_MISSION_SEQ.NEXTVAL, #{missionFg}, #{userSeq}, #{deptSeq}, #{clsSeq}, #{eventMapSeq}, #{goodsFg}, #{answer}, SYSTIMESTAMP )
+		]]>
+	</insert>
+	
+	<update id="updateMissionView" parameterType="mapModel">
+		<![CDATA[
+		UPDATE TB_EVENT_INFO
+		   SET VIEW_CNT = NVL(VIEW_CNT, 0) + 1
+         WHERE EVENT_SEQ = #{eventSeq} 
+		]]>
+	</update>
+ 
+	
+	
+</mapper>

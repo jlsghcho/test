@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util" xmlns:tx="http://www.springframework.org/schema/tx" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+		<util:properties id="globalContext" location="classpath:properties/global-context.dev.properties" />
+		<util:properties id="dbContext" location="classpath:properties/db-context.dev.properties" />
+		<!--<util:properties id="globalContext" location="classpath:properties/global-context.properties" />-->
+		<!--<util:properties id="dbContext" location="classpath:properties/db-context.properties" />-->
+
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="driverClassName" value="#{dbContext.ORA_driverClassName}" />
+		<property name="username" value="#{dbContext.ORA_userName}" />
+		<property name="password" value="#{dbContext.ORA_password}" />
+		<property name="url" value="#{dbContext.ORA_url}" />
+		<property name="initialSize" value="0" />
+		<property name="maxTotal" value="#{dbContext.ORA_maxActive}" />
+		<property name="minIdle" value="0" />
+		<property name="maxIdle" value="#{dbContext.ORA_maxIdle}" />
+		<property name="maxWaitMillis" value="10000" /> <!-- dbcp2 maxWait > maxWaitMillis 변경 -->
+		<property name="validationQuery" value="SELECT 1 FROM DUAL" />
+		<property name="validationQueryTimeout" value="-1" />
+		<property name="testOnBorrow" value="true" />
+		<property name="testOnReturn" value="false" />
+		<property name="timeBetweenEvictionRunsMillis" value="1800000" />
+		<property name="numTestsPerEvictionRun" value="3" />
+		<property name="minEvictableIdleTimeMillis" value="60000" />
+		<property name="testWhileIdle" value="true" />
+		<property name="removeAbandonedOnBorrow" value="true" /> <!-- dbcp2 removeAbandoned > removeAbandonedOnBorrow,removeAbandonedOnMaintenance 변경 -->
+		<property name="removeAbandonedOnMaintenance" value="true" />
+		<property name="removeAbandonedTimeout" value="60" />
+		<property name="logAbandoned" value="false" />
+		<property name="defaultReadOnly" value="true" />
+		<property name="accessToUnderlyingConnectionAllowed" value="true" /> <!-- dbcp2 pool Exception -->
+	</bean>
+
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" name="sqlSessionFactory" ref="sqlSessionFactory" />
+		<qualifier value="orasql" />
+	</bean>
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:mybatis/mybatis-config.xml" />
+		<property name="mapperLocations" value="classpath:mybatis/mappers/**/*.xml" />
+	</bean>
+
+	<bean id="secretService" class="com.gojls.secret.service.SecretServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="aceService" class="com.gojls.ace.service.AceServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="dliveService" class="com.gojls.dlive.service.DLiveServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="reportService" class="com.gojls.report.service.ReportServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="msUccService" class="com.gojls.chess.service.MsUccServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="mapService" class="com.gojls.ace.service.MapServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="h1kService" class="com.gojls.event.service.H1kServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="userService" class="com.gojls.roulette.service.UserServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="eventService" class="com.gojls.roulette.service.EventServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="rewardService" class="com.gojls.roulette.service.RewardServiceImpl">
+		<constructor-arg index="0" ref="sqlSession" />
+	</bean>
+
+	<bean id="songService" class="com.gojls.ems.event.service.EmsEventServiceImpl">
+		<constructor-arg index="0" ref="sqlSession"/>
+	</bean>
+	
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+</beans>

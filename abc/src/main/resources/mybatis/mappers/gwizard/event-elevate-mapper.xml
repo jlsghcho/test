@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventElevateDao">
+	
+	<insert id="insertEventElevate" parameterType="eElevate">
+		<selectKey keyProperty="eventElevateSeq" resultType="Integer" order="BEFORE">
+			SELECT EVENT_ELEVATE_SEQ.NEXTVAL AS eventElevateSeq FROM DUAL
+		</selectKey>
+		<![CDATA[
+		INSERT INTO TB_EVENT_ELEVATE ( 
+		    EVENT_ELEVATE_SEQ,
+		    EVENT_USER_SEQ,
+		    OLD_LEVEL_SEQ,
+		    EVENT_LEVEL_SEQ,
+		    QUIZ_CNT,
+		    QUIZ_ARR,
+		    STATUS,
+		    REG_TS,
+		    REG_USER_SEQ,
+		    REG_USER_NM
+		  ) VALUES ( 
+		  	#{eventElevateSeq}
+		  	, #{eventUserSeq}
+	           , #{oldLevelSeq}
+	           , #{eventLevelSeq}
+	           , #{quizCnt}
+	           , #{quizArr}
+	           , 0
+	           , SYSTIMESTAMP
+	           , #{regUserSeq}
+	           , #{regUserNm}  
+	         )
+		]]>
+	</insert>
+	
+	<update id="updateEventElevate" parameterType="eElevate">
+	<![CDATA[
+		UPDATE TB_EVENT_ELEVATE SET 
+			ANSWER_CNT = #{answerCnt}
+			, STATUS = 1
+			, MOD_USER_SEQ = #{regUserSeq}
+			, MOD_USER_NM = #{regUserNm}
+			, MOD_TS = SYSTIMESTAMP
+		WHERE EVENT_ELEVATE_SEQ = #{eventElevateSeq}
+	]]>
+	</update>
+	
+</mapper>

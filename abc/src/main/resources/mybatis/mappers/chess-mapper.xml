@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.chess.dao.MsUccDao">
+	<select id="selectMsUccList" parameterType="msUcc" resultType="msUcc">
+		<![CDATA[
+		SELECT
+			A.EVENT_UCC_SEQ AS eventUccSeq,
+			A.EVENT_SEQ AS eventSeq,
+			A.VIDEO_ID AS videoId,
+			A.USER_NM AS userNm,
+			A.DEPT_NM AS deptNm,
+			A.UCC_TITLE AS uccTitle,
+			A.UCC_COMMENT AS uccComment,
+			A.ORDER_NUM AS orderNum,
+			A.IMAGE_FILE_PATH AS imageFilePath,
+			DECODE(B.USER_SEQ, NULL, 0, 1) AS recomYn,
+			DECODE(C.USER_SEQ, NULL, 0, 1) AS viewYn,
+			TRUNC((A.ORDER_NUM - 1) / 5) + 1 AS lineNum,     
+			TO_NUMBER(TO_char(SYSDATE, 'dd')) AS day,
+			CASE
+				WHEN MOD(TO_NUMBER(TO_char(SYSDATE, 'dd')), 6) =  0 THEN TRUNC((A.ORDER_NUM - 1 ) / 5) + 1
+				WHEN MOD(TO_NUMBER(TO_char(SYSDATE, 'dd')), 6) =  1 THEN
+					CASE
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 1 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						ELSE TRUNC((A.ORDER_NUM - 1) / 5) + 1
+					END
+				WHEN MOD(TO_NUMBER(TO_char(SYSDATE, 'dd')), 6) = 2 THEN
+					CASE
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 1 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 2 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						ELSE TRUNC((A.ORDER_NUM - 1) / 5) + 1
+					END
+				WHEN MOD(TO_NUMBER(TO_char(SYSDATE, 'dd')), 6) = 3 THEN
+					CASE
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 1 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 2 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 3 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						ELSE TRUNC((A.ORDER_NUM - 1) / 5) + 1
+					END
+				WHEN MOD(TO_NUMBER(TO_char(SYSDATE, 'dd')), 6) = 4 THEN
+					CASE
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 1 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 2 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 3 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 4 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						ELSE TRUNC((A.ORDER_NUM - 1) / 5) + 1
+					END
+				WHEN MOD(TO_NUMBER(TO_char(SYSDATE, 'dd')), 6) = 5 THEN
+					CASE
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 1 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 2 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 3 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 4 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						WHEN (TRUNC((A.ORDER_NUM - 1) / 5) + 1) = 5 THEN TRUNC((A.ORDER_NUM - 1) / 5) + 1 + 6
+						ELSE TRUNC((A.ORDER_NUM - 1) / 5) + 1
+					END
+			END AS lineOrd
+		FROM TB_EVENT_UCC A,
+			(
+				SELECT *
+				FROM TB_EVENT_UCC_RECOM
+				WHERE
+					USER_SEQ = #{userSeq} AND
+					TO_CHAR(REG_TS, 'YYYYMMDD') = TO_CHAR(SYSDATE, 'YYYYMMDD')
+			) B,
+			(
+				SELECT EVENT_UCC_SEQ, USER_SEQ
+				FROM TB_EVENT_UCC_VIEW
+				WHERE
+					USER_SEQ = #{userSeq} AND
+					TO_CHAR(SYSDATE, 'YYYYMMDD') = TO_CHAR(REG_TS, 'YYYYMMDD')
+				GROUP BY EVENT_UCC_SEQ, USER_SEQ
+			) C
+		WHERE
+			A.EVENT_SEQ = #{eventSeq} AND
+			A.EVENT_UCC_SEQ = B.EVENT_UCC_SEQ (+) AND
+			A.EVENT_UCC_SEQ = C.EVENT_UCC_SEQ (+)
+		ORDER BY lineOrd, ROUND(DBMS_RANDOM.VALUE(1, 5))
+		]]>
+	</select>
+
+	<select id="selectMsUccInfo" parameterType="msUcc" resultType="msUcc">
+		<![CDATA[
+		SELECT
+			A.EVENT_UCC_SEQ AS eventUccSeq,
+			A.EVENT_SEQ AS eventSeq,
+			A.VIDEO_ID AS videoId,
+			A.USER_NM AS userNm,
+			A.DEPT_NM AS deptNm,
+			A.UCC_TITLE AS uccTitle,
+			A.UCC_COMMENT AS uccComment,
+			A.ORDER_NUM AS orderNum,
+			A.IMAGE_FILE_PATH AS imageFilePath
+		FROM TB_EVENT_UCC A
+		WHERE
+			A.EVENT_SEQ = #{eventSeq} AND
+			A.EVENT_UCC_SEQ = #{eventUccSeq}
+		ORDER BY A.ORDER_NUM
+		]]>
+	</select>
+
+	<select id="selectMsUccTop3" parameterType="msUcc" resultType="msUcc">
+	<![CDATA[
+	SELECT
+		EVENT_UCC_SEQ AS eventUccSeq,
+		UCC_TITLE AS uccTitle,
+		IMAGE_FILE_PATH AS imageFilePath,
+		USER_NM AS userNm,
+		ROWNUM AS rnum
+	FROM (
+		SELECT
+			U.EVENT_UCC_SEQ,
+			COUNT(R.EVENT_UCC_SEQ) AS UCC_RECOM_CNT,
+			U.UCC_TITLE,
+			U.IMAGE_FILE_PATH,
+			U.USER_NM
+		FROM TB_EVENT_UCC_RECOM R, TB_EVENT_UCC U
+		WHERE
+			R.EVENT_UCC_SEQ (+) = U.EVENT_UCC_SEQ AND
+			U.EVENT_SEQ = #{eventSeq}
+		GROUP BY U.EVENT_UCC_SEQ, U.UCC_TITLE, U.IMAGE_FILE_PATH, U.USER_NM, U.ORDER_NUM
+		ORDER BY UCC_RECOM_CNT DESC, U.ORDER_NUM) A
+		WHERE ROWNUM < 4
+		]]>
+	</select>
+
+	<select id="selectTotRecomCnt" parameterType="msUcc" resultType="int">
+		<![CDATA[
+		SELECT COUNT(1) AS totCnt
+		FROM TB_EVENT_UCC_RECOM R, TB_EVENT_UCC U
+		WHERE
+			R.EVENT_UCC_SEQ = U.EVENT_UCC_SEQ AND
+			U.EVENT_SEQ = #{eventSeq}
+		]]>
+	</select>
+
+	<select id="selectRecomUccCnt" parameterType="msUcc" resultType="int">
+		<![CDATA[
+		SELECT COUNT(1) AS CNT
+		FROM TB_EVENT_UCC U, TB_EVENT_UCC_RECOM R
+		WHERE
+			U.EVENT_UCC_SEQ = R.EVENT_UCC_SEQ AND
+			U.EVENT_SEQ = #{eventSeq} AND
+			R.USER_SEQ = #{userSeq} AND
+			TO_CHAR(R.REG_TS, 'YYYYMMDD') = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		]]>
+	</select>
+
+	<insert id="insertRecomUcc" parameterType="msUcc">
+		<![CDATA[
+		INSERT INTO TB_EVENT_UCC_RECOM (EVENT_UCC_RECOM_SEQ, EVENT_UCC_SEQ, USER_SEQ, USER_NM, DEPT_SEQ, DEPT_NM, REG_TS)
+		VALUES (EVENT_UCC_RECOM_SEQ.NEXTVAL, #{eventUccSeq}, #{userSeq}, #{userNm}, '', '', SYSTIMESTAMP)
+		]]>
+	</insert>
+
+	<insert id="insertViewUcc" parameterType="msUcc">
+		<![CDATA[
+		INSERT INTO TB_EVENT_UCC_VIEW (EVENT_UCC_VIEW_SEQ, EVENT_UCC_SEQ, USER_SEQ, REG_TS)
+		VALUES (EVENT_UCC_VIEW_SEQ.NEXTVAL, #{eventUccSeq}, #{userSeq}, SYSTIMESTAMP)
+		]]>
+	</insert>
+</mapper>

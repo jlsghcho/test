@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+	<settings>
+		<setting name="logImpl" value="SLF4J" />
+	</settings>	
+	<typeAliases>
+		<!-- 설문모델 -->
+		<typeAlias alias="stamp" type="com.gojls.h1k.model.StampModel"/>	
+		<typeAlias alias="time" type="com.gojls.h1k.model.H1KTimeModel"/>		
+		<typeAlias alias="survey" type="com.gojls.h1k.model.SurveyModel"/>		
+		<typeAlias alias="user" type="com.gojls.h1k.model.UserModel"/>
+		<typeAlias alias="event" type="com.gojls.dlive.model.EventModel"/>
+		<typeAlias alias="eventList" type="com.gojls.dlive.model.EventList" />
+		<typeAlias alias="student" type="com.gojls.dlive.model.StudentModel" />		
+		
+		<typeAlias alias="msUcc" type="com.gojls.chess.model.MsUccModel"/>
+		<typeAlias alias="mapModel" type="com.gojls.ace.model.MapModel"/>
+		<typeAlias alias="h1k" type="com.gojls.event.model.H1kModel"/>
+		
+		<typeAlias alias="emp" type="com.gojls.report.model.EmpModel"/>
+		<typeAlias alias="dept" type="com.gojls.report.model.DeptModel"/>
+		<typeAlias alias="class" type="com.gojls.report.model.ClassModel"/>
+		
+		<typeAlias alias="reportSearch" type="com.gojls.report.model.EventSearchModel"/>
+		<typeAlias alias="dliveReport" type="com.gojls.report.model.DliveReportModel"/>
+		<typeAlias alias="dliveRanking" type="com.gojls.report.model.DeptRnkingModel"/>
+		<typeAlias alias="msuccReport" type="com.gojls.report.model.MsuccReportModel"/>
+		<typeAlias alias="msuccRank" type="com.gojls.report.model.MsuccRankingModel"/>
+		<typeAlias alias="rouletteReport" type="com.gojls.report.model.RouletteReportModel"/>
+		
+		<typeAlias alias="emsEvent" type="com.gojls.ems.event.model.EmsEventModel"/>
+		<typeAlias alias="eventSong" type="com.gojls.ems.event.model.EmsEventSongModel"/>
+		<typeAlias alias="eventSongUserData" type="com.gojls.ems.event.model.EmsEventSongUserDataModel"/>
+		
+		<!-- grammar wizard -->
+		<typeAlias alias="eInfo" type="com.gojls.ems.gwizard.model.EventInfoModel"/>
+		<typeAlias alias="eLevel" type="com.gojls.ems.gwizard.model.EventLevelModel"/>
+		<typeAlias alias="eMovie" type="com.gojls.ems.gwizard.model.EventMovieModel"/>
+		<typeAlias alias="eNotice" type="com.gojls.ems.gwizard.model.EventNoticeModel"/>
+		<typeAlias alias="eQuiz" type="com.gojls.ems.gwizard.model.EventQuizModel"/>
+		<typeAlias alias="eSwearFilter" type="com.gojls.ems.gwizard.model.EventSwearFilterModel"/>
+		<typeAlias alias="eUser" type="com.gojls.ems.gwizard.model.EventUserModel"/>
+		<typeAlias alias="eAttendance" type="com.gojls.ems.gwizard.model.EventAttendanceModel"/>
+		<typeAlias alias="eHistory" type="com.gojls.ems.gwizard.model.EventHistoryModel"/>
+		<typeAlias alias="eElevate" type="com.gojls.ems.gwizard.model.EventElevateModel"/>
+	</typeAliases>	
+</configuration>

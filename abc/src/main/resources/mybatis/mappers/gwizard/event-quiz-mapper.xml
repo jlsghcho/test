@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventQuizDao">
+
+	<select id="selectEventQuiz" parameterType="eQuiz" resultType="eQuiz">
+		<![CDATA[
+			SELECT 
+				EVENT_QUIZ_SEQ AS eventQuizSeq
+				,QUESTION AS question
+				,QUESTION_KR AS questionKr
+				,REPLACE(REPLACE(example, '[[', #{replace1}),']]',#{replace2}) AS example
+				,ANSWER AS answer
+				,EXPLANATION AS explanation
+			FROM (
+			  SELECT * 
+			  FROM TB_EVENT_QUIZ
+			  WHERE EVENT_SEQ = #{eventSeq}
+			  	AND EVENT_MOVIE_SEQ = #{eventMovieSeq}
+			    AND USE_YN = 1
+			  ORDER BY DBMS_RANDOM.RANDOM
+			) WHERE ROWNUM = 1
+		]]>
+	</select>  
+	
+</mapper>

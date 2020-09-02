@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.roulette.dao.RewardDao">
+	<select id="selectRewards" parameterType="_int" resultMap="reward">
+		<![CDATA[
+		SELECT
+			REWARD_SEQ,
+			ROULETTE_EVENT_SEQ,
+			REWARD_NM,
+			REWARD_IMG_URL,
+			NULL AS "CONFIRMED_AT"
+		FROM TB_ROULETTE_REWARD
+		]]>
+	</select>
+
+	<select id="selectReward" resultMap="reward">
+		<![CDATA[
+		SELECT
+			R.REWARD_SEQ,
+			R.ROULETTE_EVENT_SEQ,
+			R.REWARD_NM,
+			R.REWARD_IMG_URL,
+			UR.CONFIRMED_AT
+		FROM TB_ROULETTE_REWARD R, TB_ROULETTE_USER_REWARD UR
+		WHERE
+			R.REWARD_SEQ = UR.REWARD_SEQ AND
+			R.ROULETTE_EVENT_SEQ = UR.ROULETTE_EVENT_SEQ AND
+			R.ROULETTE_EVENT_SEQ = #{event.sequence} AND
+			UR.USER_SEQ = #{user.sequence}
+		]]>
+	</select>
+
+	<update id="updateRewardConfirmation">
+		<![CDATA[
+		UPDATE TB_ROULETTE_USER_REWARD
+		SET
+			CONFIRMED_AT = SYSTIMESTAMP,
+			MOD_USER_SEQ = #{user.sequence},
+			MOD_USER_NM = #{user.name},
+			MOD_TS = SYSTIMESTAMP
+		WHERE
+			ROULETTE_EVENT_SEQ = #{event.sequence} AND
+			USER_SEQ = #{user.sequence}
+		]]>
+	</update>
+
+	<resultMap id="reward" type="com.gojls.roulette.model.Reward">
+		<constructor>
+			<idArg javaType="_long" column="REWARD_SEQ" />
+			<arg javaType="_long" column="ROULETTE_EVENT_SEQ" />
+			<arg javaType="string" column="REWARD_NM" />
+			<arg javaType="string" column="REWARD_IMG_URL" />
+			<arg javaType="java.util.Date" column="CONFIRMED_AT" />
+		</constructor>
+	</resultMap>
+</mapper>

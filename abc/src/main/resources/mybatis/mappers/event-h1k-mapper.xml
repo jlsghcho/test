@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.event.dao.H1kDao">
+
+
+	<select id="selectH1kEventInfo" parameterType="h1k" resultType="h1k">
+		<![CDATA[
+			 SELECT (SELECT COUNT(1) 
+			           FROM TB_EVENT_MISSION
+			          WHERE EVENT_SEQ = #{eventSeq}
+                        AND MISSION_SEQ = '1' ) AS mission1Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MISSION
+			          WHERE EVENT_SEQ = #{eventSeq}
+                        AND MISSION_SEQ = '2' ) AS mission2Cnt
+			      , (SELECT COUNT(1) 
+			           FROM TB_EVENT_MISSION
+			          WHERE EVENT_SEQ = #{eventSeq}
+                        AND MISSION_SEQ = '3' ) AS mission3Cnt
+			   FROM TB_EVENT_INFO A
+			  WHERE EVENT_SEQ = #{eventSeq}
+		]]>
+	</select>  
+ 
+       
+	<select id="selectMissionCnt" parameterType="h1k" resultType="int">
+	<![CDATA[			
+             SELECT COUNT(1) as cnt
+			   FROM TB_EVENT_MISSION A
+			  WHERE EVENT_SEQ = #{eventSeq}
+			    AND MISSION_SEQ = #{missionSeq}
+		]]>   		
+		<if test='missionSeq != "3"'>
+			   AND USER_SEQ = #{userSeq}
+               AND TO_CHAR(REG_DT, 'YYYYMMDD') = TO_CHAR(SYSDATE, 'YYYYMMDD')
+        </if>
+	</select>
+	 
+	<insert id="insertMission" parameterType="h1k">
+		<![CDATA[
+		  INSERT INTO TB_EVENT_MISSION ( EVENT_MISSION_SEQ,EVENT_SEQ,MISSION_SEQ,ANSWER,USER_SEQ,REG_DT )
+          VALUES (EVENT_MISSION_SEQ.NEXTVAL, #{eventSeq}, #{missionSeq}, #{answer}, #{userSeq},SYSTIMESTAMP )
+		]]>
+	</insert>
+	 
+	
+</mapper>

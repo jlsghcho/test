@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="RUN_MODE" value="SERVICE" />
+    <!--<property name="RUN_MODE" value="DEVELOPMENT" />-->
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                %d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n
+            </Pattern>
+        </layout>
+    </appender>
+
+    <if condition='property("RUN_MODE").equals("SERVICE")'>
+        <then>
+            <property name="LOG_DIR" value="/home/gojls/data/eventdata/logs" />
+        </then>
+        <else>
+            <property name="LOG_DIR" value="D:/Hannibal/workspace for STS/Secret/logs" />
+        </else>
+    </if>
+
+    <property name="LOG_PATH_NAME" value="${LOG_DIR}/secret-webapp.log" />
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH_NAME}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH_NAME}.%d{yyyy-MM-dd}</fileNamePattern> <!-- 파일이 하루에 한개씩 생성된다 -->
+            <maxHistory>30</maxHistory> <!-- maxHIstory 설정은 위 부분에 롤링 정책에 따라 적용되 된다고 보면된다. 위 설정데로 라면 30일이 지난 파일은 삭제가 된다.-->
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{35} - %msg%n</pattern>
+        </encoder>
+        <!--
+		<encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder" >
+			<providers>
+				<pattern><pattern>{"serviceID":"openAPI"}</pattern></pattern>
+				<timestamp><pattern>yyyy-MM-dd HH:mm:ss.SSS</pattern></timestamp>
+				<threadName/>
+				<message/>
+				<loggerName/>
+				<logLevel/>
+				<stackTrace/>
+				<callerData/>
+			</providers>
+		</encoder>-->
+    </appender>
+
+    <logger name="org.springframework" level="warning" />
+    <logger name="org.mybatis" level="debug" />
+    <logger name="com.gojls.secret" level="debug" /><!-- package name Setting -->
+    <if condition='property("RUN_MODE").equals("SERVICE")'>
+        <then>
+            <!-- 설정파일에 RUN_MODE 가 SERVICE로 정의되어 있으면 로깅 레벨을 INFO로 지정 -->
+            <root level="debug">
+                <appender-ref ref="STDOUT" />
+                <appender-ref ref="FILE" />
+            </root>
+        </then>
+        <!-- 설정파일에 RUN_MODE 가 SERVICE로 정의되어 있지 않으면 로깅 레벨을 DEBUG 지정 -->
+        <else>
+            <root level="error">
+                <appender-ref ref="STDOUT" />
+                <appender-ref ref="FILE" />
+            </root>
+        </else>
+    </if>
+</configuration>
+
+

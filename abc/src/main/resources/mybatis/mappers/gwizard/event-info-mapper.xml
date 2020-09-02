@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventInfoDao">
+
+	<select id="selectEventInfo" parameterType="eInfo" resultType="eInfo">
+		<![CDATA[
+			 SELECT 
+			  EI.EVENT_SEQ AS eventSeq,
+			  EI.EVENT_NM AS eventNm,
+			  EI.INFO AS info,
+			  TO_CHAR(TO_DATE(EI.VIEW_START_DT, 'YYYY.MM.DD, HH24:MI'), 'YYYYMMDDHH24MI') AS startDt,
+			  TO_CHAR(TO_DATE(EI.VIEW_END_DT, 'YYYY.MM.DD, HH24:MI'), 'YYYYMMDDHH24MI') AS endDat,
+			  EI.PUBLICATION_DT AS publicationDt,
+			  CASE WHEN (TO_CHAR(SYSDATE, 'YYYYMMDDHH24MI') >= TO_CHAR(TO_DATE(EI.VIEW_START_DT, 'YYYY.MM.DD, HH24:MI'), 'YYYYMMDDHH24MI') and TO_CHAR(SYSDATE, 'YYYYMMDDHH24MI') <= TO_CHAR(TO_DATE(EI.VIEW_END_DT, 'YYYY.MM.DD, HH24:MI'), 'YYYYMMDDHH24MI')) THEN 1 ELSE 0 END AS eventState 
+			FROM TB_LKIDS_EVENT_INFO EI
+			WHERE EI.GT_EVENT_TYPE = #{gtEventType}
+			  AND EI.EPISODE_SEQ = #{episodeSeq}
+		]]>
+	</select>  
+	
+</mapper>

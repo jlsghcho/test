@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.report.dao.ReportDao">
+
+
+	<select id="authEmp" parameterType="emp" resultType="emp">
+		<![CDATA[
+			SELECT 
+				EE.EMP_SEQ AS empSeq,
+				EE.EMP_ID AS empId,
+				EE.EMP_NM AS empNm,
+				CASE 
+					WHEN ER.ROLE_CD='RTA004' THEN '01'
+					WHEN ER.ROLE_CD='RTA009' THEN '01'
+					ELSE '99'
+				END AS empRole,
+				CASE 
+					WHEN EE.GT_EMP_TYPE='EM2010' THEN '01'   
+					WHEN EE.GT_EMP_TYPE='EM2030' THEN '02'
+					WHEN EE.GT_EMP_TYPE='EM2040' THEN '03'
+					ELSE '99'
+				END AS empTypeCd,
+				DECODE(EE.USE_YN, 1, 'Y', 0, 'N') AS useFg
+			FROM GAIMS.TB_US_EMP EE , GT_ROLE_USER ER  	
+			WHERE
+				EE.EMP_ID=#{empId}
+				AND EE.EMP_SEQ = ER.EMP_SEQ
+				AND EE.USE_YN = 1				
+		]]>
+	</select>
+	
+	
+	
+	<select id="selectEmpDeptList"  parameterType="emp"  resultType="dept">
+		<![CDATA[
+			  SELECT
+			     DISTINCT DD.DEPT_SEQ AS deptSeq 
+				, DD.DEPT_NM AS deptNm
+				FROM TB_US_EMP UU
+			       , TB_DEPT_EMP DU
+			       , TB_DEPT DD
+				WHERE  UU.USE_YN = 1
+			       	AND UU.EMP_SEQ = DU.EMP_SEQ
+			        AND DU.DEPT_SEQ = DD.DEPT_SEQ
+			        AND DD.GT_DEPT_COURSE = 'DP2001'
+				]]>
+				<if test="empRole != null and empRole != '01'" >
+				<![CDATA[
+           		     AND DU.EMP_SEQ = #{empSeq}
+                ]]>
+				</if>
+				ORDER BY DD.DEPT_NM ASC
+	</select>
+	
+	<select id="selectDeptTeacherList" parameterType="dept"   resultType="emp">
+		<![CDATA[
+			SELECT E.EMP_SEQ AS empSeq
+				,  E.EMP_NM AS empNm
+  			FROM TB_DEPT_EMP DU 
+  				, TB_US_EMP E
+			WHERE DU.EMP_SEQ = E.EMP_SEQ
+		   	AND E.GT_EMP_TYPE = 'EM2010'
+		   	AND DU.DEPT_SEQ = #{deptSeq}
+		   	AND e.USE_YN = 1 
+		]]>
+	</select>
+	
+	
+	<select id="selectDeptClassList"  resultType="class">
+		<![CDATA[
+			SELECT CM.CLS_SEQ
+			     , CM.CLS_NM
+			     , CM.TMAN_EMP_SEQ
+			     , CM.TMAN_EMP_NM
+			FROM TB_CLS_MST CM
+			WHERE CM.DEPT_SEQ = #{deptSeq}
+			AND CM.TMAN_EMP_SEQ = #{empSeq}
+			AND CM.GT_CLS_STATE = 'CL1001'
+		]]>
+	</select>
+	
+
+	<select id="selectDliveList" parameterType="reportSearch" resultType="dliveReport" > 
+		<![CDATA[
+		
+			SELECT ROWNUM "RN"
+			     , A.*
+			  FROM( SELECT DE.H1K_DLIVE_SEQ AS h1kDliveSeq
+			              , UU.USER_SEQ AS userSeq
+			              , DD.DEPT_SEQ AS deptSeq
+			              , COMMON_PKG.CODE_NM(DD.GT_DEPT_OPR_TYPE) AS deptType
+			              , DD.DEPT_NM AS deptNm
+			              , (SELECT WMSYS.WM_CONCAT(CM.CLS_NICK_NM||' ['||CM.TMAN_EMP_NM||']') AS CLS_TMAN
+			                   FROM TB_CLS_MST CM
+			                      , TB_CLS_USER CU
+			                  WHERE CU.USER_SEQ = UU.USER_SEQ
+			                    AND CU.CLS_SEQ = CM.CLS_SEQ
+			                    AND CM.DEPT_SEQ = DD.DEPT_SEQ
+			                    AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+			                ) AS clsTman  	
+			              , UU.USER_ID AS userId
+			              , UU.USER_NM AS userNm
+			              , DECODE(DE.GT_DLIVE_TYPE, '1K3001'
+			                     	, '사진인증'
+			                     	, '글쓰기인증') AS dliveType
+			              , DE.IMG_PATH AS dliveImgPath
+			              , DE.DLIVE_TEXT AS dliveText
+			              , TO_CHAR(DE.REG_TS, 'YYYYMMDD') AS uploadeDate
+			              , RANK() OVER(PARTITION BY DE.USER_SEQ ORDER BY DE.H1K_DLIVE_SEQ ) AS uploadCount
+			           FROM TB_H1K_EVENT_DLIVE DE
+			              , TB_US_USER UU
+			              , TB_DEPT_USER DU
+			              , TB_DEPT DD
+			          WHERE DE.EVENT_SEQ = #{eventSeq}
+			            AND DE.USE_YN = 'Y'
+			            AND UU.USER_SEQ = DU.USER_SEQ
+			            AND DU.DEPT_SEQ = DD.DEPT_SEQ
+			            AND DD.GT_DEPT_COURSE = 'DP2001'
+			            AND UU.USE_YN = 1
+			            AND DE.USER_SEQ = UU.USER_SEQ
+			            AND EXISTS
+			                (SELECT *
+			                   FROM TB_CLS_MST CM
+			                      , TB_CLS_USER CU
+			                  WHERE CU.USER_SEQ = UU.USER_SEQ
+			                    AND CU.CLS_SEQ = CM.CLS_SEQ
+			                    AND CM.DEPT_SEQ = DD.DEPT_SEQ			                    
+			                    AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+			                    AND ROWNUM < 2
+					   	]]>
+					   	<if test="deptSeq != null and deptSeq != 'ALL'">
+							<![CDATA[
+								    AND DD.DEPT_SEQ = #{deptSeq}
+							]]>
+						</if>
+						<if test="clsSeq != null and clsSeq != 'ALL'" >
+							<![CDATA[
+								    AND cm.CLS_seq = #{clsSeq}
+							]]>
+						</if>
+						<if test="empSeq != null and empSeq != 'ALL'" >
+							<![CDATA[
+								    AND cm.TMAN_EMP_SEQ = #{empSeq}
+							]]>
+						</if>
+						
+			            <![CDATA[
+	                     )
+			       ORDER BY DE.REG_TS DESC
+			       ) A
+		]]>
+	</select>
+
+	<select id="selectDliveRankingList" parameterType="int" resultType="dliveRanking" > 
+		<![CDATA[
+			  SELECT 
+			        DD.DEPT_SEQ AS deptSeq
+			       , DD.DEPT_NM AS deptNm
+			       , COUNT(DE.H1K_DLIVE_SEQ) AS cnt 
+			    FROM TB_H1K_EVENT_DLIVE DE
+			       , TB_US_USER UU
+			       , TB_DEPT_USER DU
+			       , TB_DEPT DD
+			   WHERE DE.EVENT_SEQ = #{eventSeq}
+			     AND DE.USE_YN = 'Y'
+			     AND UU.USER_SEQ = DU.USER_SEQ
+			     AND DU.DEPT_SEQ = DD.DEPT_SEQ
+			     AND DD.GT_DEPT_COURSE = 'DP2001'
+			     AND UU.USE_YN = 1
+			     AND DE.USER_SEQ = UU.USER_SEQ
+			     AND EXISTS
+			         (SELECT *
+			            FROM TB_CLS_MST CM
+			               , TB_CLS_USER CU
+			           WHERE CU.USER_SEQ = UU.USER_SEQ
+			             AND CU.CLS_SEQ = CM.CLS_SEQ
+			             AND CM.DEPT_SEQ = DD.DEPT_SEQ
+			             AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+			             AND ROWNUM < 2
+			         )
+			GROUP BY 
+			        DD.DEPT_SEQ
+			       , DD.DEPT_NM 
+			ORDER BY cnt DESC     
+
+		]]>
+	</select>
+
+
+	<select id="selectUccRankingList" parameterType="reportSearch" resultType="msuccRank" > 
+		<![CDATA[
+			SELECT
+				COUNT( R.EVENT_UCC_SEQ) AS uccReconCnt,
+				COUNT(distinct R.USER_SEQ) AS uccReconCntDe,
+				U.UCC_TITLE AS uccTitle,
+				U.USER_NM AS userNm,
+				U.IMAGE_FILE_PATH AS imageFilePath				
+			FROM TB_EVENT_UCC_RECOM R, TB_EVENT_UCC U
+			WHERE
+				R.EVENT_UCC_SEQ (+) = U.EVENT_UCC_SEQ AND
+				U.EVENT_SEQ = #{eventSeq}
+			GROUP BY U.EVENT_UCC_SEQ, U.UCC_TITLE, U.IMAGE_FILE_PATH, U.USER_NM, U.ORDER_NUM
+			ORDER BY uccReconCnt DESC, U.ORDER_NUM
+		]]>
+	</select>
+	
+	<select id="selectUccUserList" parameterType="reportSearch" resultType="msuccReport" > 
+		<![CDATA[
+			SELECT EU.USER_SEQ AS userSeq
+				 , EU.USER_NM userNm
+			     , UU.USER_ID AS userId
+			     , EU.CNT AS cnt
+			     , COMMON_PKG.CODE_NM(UU.GT_USER_TYPE) AS gtUserType
+			     , CASE
+			             WHEN UU.GT_USER_TYPE = 'US6002' THEN UU.MOBILE1||'-'||UU.MOBILE2||'-'||UU.MOBILE3
+			             ELSE
+			                   (SELECT UP.MOBILE1||'-'||UP.MOBILE2||'-'||UP.MOBILE3
+			                      FROM TB_US_USER UP
+			                     WHERE UU.PARENT_USER_SEQ = UP.USER_SEQ
+			                   )
+			       END AS parentMobile
+			     , (SELECT DECODE(COUNT(1), 1
+			             , '재원'
+			             , '비재원')
+			        FROM TB_CLS_MST CM
+			             , TB_CLS_USER CU
+			             , TB_DEPT D
+			        WHERE CM.CLS_SEQ = CU.CLS_SEQ
+			           	AND CM.DEPT_SEQ = D.DEPT_SEQ
+			           	AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+			           	AND CU.USER_SEQ = EU.USER_SEQ
+			           	AND ROWNUM < 2
+			       ) AS useYn
+			     , (SELECT WMSYS.WM_CONCAT(DISTINCT D.DEPT_NM)
+			        FROM TB_CLS_MST CM
+			        	, TB_CLS_USER CU
+			            , TB_DEPT D
+			        WHERE CM.CLS_SEQ = CU.CLS_SEQ
+						AND CM.DEPT_SEQ = D.DEPT_SEQ
+			           	AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+			           	AND CU.USER_SEQ = EU.USER_SEQ
+			       ) AS deptNm
+			     , (SELECT WMSYS.WM_CONCAT(DISTINCT CO.COURSE_LEV)
+			        FROM TB_CLS_MST CM
+			             , TB_CLS_USER CU
+			             , TB_DEPT D
+			             , TB_COURSE_MST CO
+			        WHERE CM.CLS_SEQ = CU.CLS_SEQ
+			           	AND CM.DEPT_SEQ = D.DEPT_SEQ
+			           	AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+			           	AND CU.USER_SEQ = EU.USER_SEQ
+			           	AND CM.COURSE_SEQ = CO.COURSE_SEQ
+			       ) AS level			     
+			   , CASE
+			    WHEN UU.GT_USER_TYPE = 'US6002'
+			    	THEN (SELECT WMSYS.WM_CONCAT('['||UU1.USER_ID||']'||UU1.USER_NM) FROM TB_US_USER UU1 WHERE UU1.PARENT_USER_SEQ = UU.USER_SEQ AND UU1.USE_YN = 1 )
+			    	ELSE ''
+				END chidrenInfo
+		FROM( SELECT USER_SEQ
+				, USER_NM
+				, COUNT(R.EVENT_UCC_RECOM_SEQ) AS CNT
+			  FROM TB_EVENT_UCC_RECOM R
+			  WHERE R.EVENT_UCC_SEQ BETWEEN 92 AND 122
+				GROUP BY USER_SEQ 
+				, USER_NM
+			) EU
+			, TB_US_USER UU
+		WHERE EU.USER_SEQ = UU.USER_SEQ(+)
+		]]>
+	</select>
+	
+	<select id="ruletteResult" parameterType="reportSearch" resultType="rouletteReport" >
+		<![CDATA[ 
+			SELECT distinct UU.USER_SEQ AS SID   
+		     , COMMON_PKG.CODE_NM(DD.GT_DEPT_OPR_TYPE) AS deptType         
+		     , DD.DEPT_NM AS deptNm      
+		     , UU.SCHOOL_NM AS school      
+		     , COMMON_PKG.CODE_NM(UU.GT_GRADE) AS gtGrade         
+		     , UU.USER_NM AS userNm
+		     , UU.USER_SEQ AS userDeq       
+		     , UU.USER_ID AS userId       
+		     , UU.MOBILE1 || '-' || UU.MOBILE2 || '-' || UU.MOBILE3 AS mobile    
+		     , UU.MOTION_PARENT_MOBILE1 || '-' || UU.MOTION_PARENT_MOBILE2 || '-' || UU.MOTION_PARENT_MOBILE3 AS parentMobile    
+		     , TO_CHAR( RE.CONFIRMED_AT, 'YYYY-MM-DD')  AS date
+		     , (SELECT R.REWARD_NM FROM TB_ROULETTE_REWARD R WHERE R.REWARD_SEQ = RE.REWARD_SEQ) AS reward
+		     , HT.MONTH_SUM9
+		     , HT.MONTH_SUM10
+		     , HT.MONTH_SUM11
+		  FROM TB_ROULETTE_USER_REWARD RE   
+		     , TB_US_USER UU         
+		     , TB_DEPT_USER DU         
+		     , TB_DEPT DD         
+		     , TB_H1K_TIME_TOTAL HT
+		  WHERE RE.ROULETTE_EVENT_SEQ=3           
+		       AND RE.CONFIRMED_AT is not null            
+		       AND UU.USER_SEQ = DU.USER_SEQ         
+		       AND DU.DEPT_SEQ = DD.DEPT_SEQ         
+		       AND UU.USE_YN = 1          
+		       AND HT.H1K_EVENT_SEQ  = 2
+		       AND RE.USER_SEQ = HT.USER_SEQ         
+		       AND RE.USER_SEQ = UU.USER_SEQ         
+		       AND EXISTS         
+		       (SELECT *         
+		        FROM TB_CLS_MST CM         
+		           , TB_CLS_USER CU         
+		        WHERE CU.USER_SEQ = UU.USER_SEQ         
+		              AND CU.CLS_SEQ =CM.CLS_SEQ         
+		              AND CM.DEPT_SEQ = DD.DEPT_SEQ         
+		              AND TO_CHAR(SYSDATE,'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT         
+		       )      
+		]]>
+	</select>
+	
+</mapper>	

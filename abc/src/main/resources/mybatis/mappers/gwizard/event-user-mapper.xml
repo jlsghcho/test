@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventUserDao">
+
+	<select id="selectUserCheck" resultType="int">
+		<![CDATA[	
+			SELECT (
+				CASE
+					WHEN COUNT(1) > 0 THEN 1
+					ELSE 0
+				END
+			)
+			FROM TB_CLS_USER CU, TB_CLS_MST C, TB_DEPT D, TB_US_USER U
+			WHERE
+				U.USER_SEQ = CU.USER_SEQ AND
+                CU.USER_SEQ = #{userSeq} AND
+				CU.CLS_SEQ = C.CLS_SEQ AND
+				C.DEPT_SEQ = D.DEPT_SEQ AND
+				U.GT_USER_TYPE = 'US6001' AND
+				D.GT_DEPT_COURSE in ('DP2001', 'DP2002') AND
+				C.GT_CLS_STATE = 'CL1001' AND
+				TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT AND
+				TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN C.START_DT AND C.END_DT 
+         ]]>
+	</select> 
+
+	<select id="selectChessUserQuizKrCheck" resultType="int">
+		<![CDATA[	
+			SELECT DECODE(COUNT(1), 0, 0, 1) 
+			FROM TB_CLS_USER CU, TB_CLS_MST C, TB_CLS_COURSE CC, TB_COURSE_MST CM 
+			WHERE CU.CLS_SEQ = C.CLS_SEQ
+				AND C.CLS_SEQ = CC.CLS_SEQ
+				AND CC.COURSE_SEQ = CM.COURSE_SEQ
+				AND CU.USER_SEQ = #{userSeq}
+				AND C.GT_CLS_STATE = 'CL1001' --수업
+				AND C.GT_CLS_WORK_TYPE = 'CL2001' --정규
+				AND CC.USE_YN = 1
+				AND CM.USE_YN = 1
+				AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+				AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN C.START_DT AND C.END_DT
+				AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CC.START_DT AND CC.END_DT
+				AND CM.PARENT_COURSE_SEQ = 6 --CHESS
+				AND CM.SORT_SEQ < 23 -- DSC 아래 레벨
+         ]]>
+	</select> 
+
+	<select id="selectEventTopUserList" parameterType="eUser" resultType="eUser">
+		<![CDATA[
+		SELECT * FROM (
+			SELECT 
+			  EU.EVENT_USER_SEQ AS eventUserSeq
+			  , EU.USER_SEQ AS userSeq
+			  , DECODE(EU.NICK_NM, NULL, (SELECT USER_ID FROM TB_US_USER WHERE USER_SEQ = EU.USER_SEQ), EU.NICK_NM) AS nickNm
+			  , EU.EVENT_LEVEL_SEQ AS eventLevelSeq
+			  , EL.LEVEL_NM AS levelNm
+			  , EU.MOVIE_CNT AS movieCnt
+			  , EU.VIEW_CNT AS viewCnt
+			  , DECODE(EU.USER_SEQ, #{userSeq}, 0, ROW_NUMBER() OVER(ORDER BY EU.MOD_TS DESC)) RN
+			FROM TB_EVENT_USER EU, TB_EVENT_LEVEL EL
+			WHERE EU.EVENT_LEVEL_SEQ = EL.EVENT_LEVEL_SEQ
+			  AND EU.EVENT_SEQ = #{eventSeq}
+			  AND EL.TOP_YN = 1
+			  AND EU.LIST_VIEW_YN = 1
+			ORDER BY EU.MOD_TS DESC
+		) WHERE RN < 51
+		]]>
+	</select>  
+	
+	<select id="selectEventUser" parameterType="eUser" resultType="eUser">
+		<![CDATA[
+			SELECT 
+			  EU.EVENT_USER_SEQ AS eventUserSeq
+			  , EU.EVENT_SEQ AS eventSeq
+			  , EU.USER_SEQ AS userSeq
+			  , EU.NICK_NM AS nickNm
+			  , EU.EVENT_LEVEL_SEQ AS eventLevelSeq
+			  , EL.LEVEL_NM AS levelNm
+			  , EU.MOVIE_CNT AS movieCnt
+			  , EU.VIEW_CNT AS viewCnt
+			  , EL.STAGE_NO AS stageNo
+			  , EL.MOVIE_CNT AS levelMovieCnt
+			  , EL.VIEW_CNT AS levelViewCnt
+			  , EL.NEXT_LEVEL_SEQ AS nextLevelSeq
+			  , (SELECT LEVEL_NM FROM TB_EVENT_LEVEL WHERE EVENT_LEVEL_SEQ = EL.NEXT_LEVEL_SEQ) AS nextLevelNm
+			  , (SELECT STAGE_NO FROM TB_EVENT_LEVEL WHERE EVENT_LEVEL_SEQ = EL.NEXT_LEVEL_SEQ) AS nextStageNo
+			  , EL.QUIZ_CNT AS levelQuizCnt
+			  , EL.PASS_CNT AS levelPassCnt
+			FROM TB_EVENT_USER EU, TB_EVENT_LEVEL EL
+			WHERE EU.EVENT_LEVEL_SEQ = EL.EVENT_LEVEL_SEQ
+		]]>
+		<choose>
+		<when test="eventUserSeq != null and eventUserSeq != ''">
+		<![CDATA[
+			  AND EU.EVENT_USER_SEQ = #{eventUserSeq}
+		]]>
+		</when>
+		<otherwise>
+		<![CDATA[
+			  AND EU.EVENT_SEQ = #{eventSeq}
+			  AND EU.USER_SEQ = #{userSeq}
+		]]>
+		</otherwise>
+		</choose>
+	</select>
+	
+	<select id="selectEventUserNickNmCnt" parameterType="eUser" resultType="int">
+		<![CDATA[
+			SELECT 
+			  COUNT(1)
+			FROM TB_EVENT_USER EU
+			WHERE EU.NICK_NM = #{nickNm}
+			AND EU.EVENT_USER_SEQ != #{eventUserSeq}
+		]]>
+	</select> 
+	
+	<select id="selectEventSwearFilterCheck" parameterType="eUser" resultType="eSwearFilter">
+		<![CDATA[
+			SELECT 
+			  WORD AS word
+			FROM TB_EVENT_SWEAR_FILTER ESF
+			WHERE USE_YN = 1
+			AND '''||${nickNm}||''' LIKE '%'||WORD||'%'
+		]]>
+	</select> 
+	
+	<insert id="insertEventUser" parameterType="eUser">
+		<![CDATA[
+		MERGE INTO TB_EVENT_USER A
+	     USING DUAL U ON ( A.EVENT_SEQ = #{eventSeq} AND A.USER_SEQ = #{userSeq})
+	     WHEN NOT MATCHED THEN
+			INSERT ( 
+			    EVENT_USER_SEQ,
+			    USER_SEQ,
+			    EVENT_SEQ,
+			    NICK_NM,
+			    EVENT_LEVEL_SEQ,
+			    MOVIE_CNT,
+			    VIEW_CNT,
+			    REG_TS,
+			    REG_USER_SEQ,
+			    REG_USER_NM
+			  ) VALUES ( 
+			  	EVENT_USER_SEQ.NEXTVAL
+		           , #{userSeq}
+		           , #{eventSeq}
+		           , #{nickNm}
+		           , #{eventLevelSeq}
+		           , 0
+		           , 0
+		           , SYSTIMESTAMP
+		           , #{regUserSeq}
+		           , #{regUserNm}  
+		         )
+		]]>
+	</insert>
+	
+	<update id="updateEventUserNickNm" parameterType="eUser">
+	<![CDATA[
+		UPDATE TB_EVENT_USER SET 
+			NICK_NM = #{nickNm}
+			, MOD_USER_SEQ = #{regUserSeq}
+			, MOD_USER_NM = #{regUserNm}
+			, MOD_TS = SYSTIMESTAMP
+		WHERE EVENT_USER_SEQ = #{eventUserSeq}
+	]]>
+	</update>
+	
+	<update id="updateEventUserMovie" parameterType="eUser">
+	<![CDATA[
+		UPDATE TB_EVENT_USER SET 
+			MOVIE_CNT = #{movieCnt}
+			, VIEW_CNT = #{viewCnt}
+			, MOD_USER_SEQ = #{regUserSeq}
+			, MOD_USER_NM = #{regUserNm}
+			, MOD_TS = SYSTIMESTAMP
+		WHERE EVENT_USER_SEQ = #{eventUserSeq}
+	]]>
+	</update>
+	
+	<update id="updateEventUserLevel" parameterType="eUser">
+	<![CDATA[
+		UPDATE TB_EVENT_USER EU SET 
+			EVENT_LEVEL_SEQ = ${nextLevelSeq}
+			, MOD_USER_SEQ = #{regUserSeq}
+			, MOD_USER_NM = #{regUserNm}
+			, MOD_TS = SYSTIMESTAMP
+		WHERE EVENT_USER_SEQ = #{eventUserSeq}
+	]]>
+	</update>
+	
+</mapper>

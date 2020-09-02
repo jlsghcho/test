@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.dlive.dao.DLiveDao">
+
+
+	<update id="addPageCount">
+	<![CDATA[
+		-- 이벤트 방뭄  회수 증가
+		UPDATE TB_H1K_EVENT_DLIVE_INFO 
+		SET	VISIT_COUNT = VISIT_COUNT+1
+		WHERE EVENT_SEQ =  #{eventSeq}
+		]]>
+	</update>
+	
+	<select id="selectCurrentEventInfo" resultType="event">	
+	<![CDATA[
+		-- 현재 진행중인  이벤트 정보
+		SELECT 	C_EVENT.EVENT_SEQ AS eventSeq, 
+		C_EVENT.EVENT_TITLE AS eventTitle, 
+		C_EVENT.UPLOAD_START_DT AS uploadStartDate, 
+		C_EVENT.UPLOAD_END_DT AS uploadEndDate, 
+		C_EVENT.WINNER_ANNOUNCE_DT AS winnerAnnDate, 
+		C_EVENT.PRIZE_DETAIL_URL AS prizeURL, 
+		C_EVENT.WINNER_ANNOUNCE_URL AS winnerAnnURL,
+        C_EVENT.VISIT_COUNT AS visitCount  
+		FROM (
+			 SELECT * FROM TB_H1K_EVENT_DLIVE_INFO
+			 WHERE EVENT_SEQ=(SELECT MAX(EVENT_SEQ) FROM TB_H1K_EVENT_DLIVE_INFO)
+		) C_EVENT
+	]]>
+	</select>	
+
+	<select id="selectEventInfo" resultType="event">	
+	<![CDATA[
+		 SELECT EVENT_SEQ AS eventSeq, 
+				EVENT_TITLE AS eventTitle, 
+				UPLOAD_START_DT AS uploadStartDate, 
+				UPLOAD_END_DT AS uploadEndDate, 
+				WINNER_ANNOUNCE_DT AS winnerAnnDate, 
+				PRIZE_DETAIL_URL AS prizeURL, 
+				WINNER_ANNOUNCE_URL AS winnerAnnURL,  
+        		VISIT_COUNT AS visitCount  
+         FROM TB_H1K_EVENT_DLIVE_INFO  WHERE EVENT_SEQ = #{eventSeq} 
+	]]>
+	</select>	
+	
+	<select id="selectEventList" resultType="eventList">
+		<![CDATA[
+		-- 이벤트 리스트 정보
+		SELECT 	EVENT_SEQ AS eventSeq, 
+	    EVENT_TITLE AS eventTitle ,   
+	    WINNER_ANNOUNCE_URL AS winnerAnnounceURL
+	    FROM TB_H1K_EVENT_DLIVE_INFO WHERE EVENT_SEQ <=  #{eventSeq}
+	    ORDER BY EVENT_SEQ ASC 
+		]]>
+	</select>
+
+	<select id="selectCildrenList" parameterType="String" resultType="student">
+		<![CDATA[
+		  -- 학부모 로그인읭 경우 체스 수강중인 학생만  추출
+		  	SELECT 
+			  	CH.USER_SEQ AS userSeq
+	     		, CH.USER_NM AS userNm
+	     		, (SELECT FLOOR(TIME_TOTAL/60) AS totalTime
+	            	   	FROM TB_H1K_TIME_TOTAL
+	                	WHERE H1K_EVENT_SEQ = #{h1kEventSeq}
+	                   	AND USER_SEQ = CH.USER_SEQ
+	       		)
+	       		AS UserTime
+  			FROM TB_US_USER CH
+			WHERE PARENT_USER_SEQ = #{userSeq}
+   			AND USE_YN = 1
+   			AND NVL(SLEEP_FL,0) = 0
+   			AND EXISTS
+       		(SELECT 1  
+                FROM TB_CLS_USER CU
+                     , TB_CLS_MST CM
+                     , TB_DEPT D
+                 WHERE CM.CLS_SEQ = CU.CLS_SEQ
+                   AND D.DEPT_SEQ = CM.DEPT_SEQ
+                   AND D.GT_DEPT_COURSE = 'DP2001'                                    -- CHESS 분원
+                   AND CM.GT_CLS_STATE = 'CL1001'                                     -- 반상태 수업
+                   AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT -- 오늘 회원 수업 기간 확인
+                   AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT -- 오늘 반 수업 기간 확인
+                   AND CU.USER_SEQ = CH.USER_SEQ                                      -- 변수 회원 SID (TB_US_) AS Attending
+                   AND ROWNUM < 2 
+       		)
+	   		ORDER BY CH.GT_GRADE
+		]]>
+	</select>
+	
+	
+	
+	<select id="selectStudentInfo" parameterType="String" resultType="student">
+		<![CDATA[
+			-- 학생 로그인읭 경우 체스 수강중인 학생만  추출
+		       	SELECT ST.USER_SEQ AS userSeq
+     		   	, ST.USER_NM AS userNm
+     		   	, (SELECT FLOOR(TIME_TOTAL/60) AS totalTime
+            		FROM TB_H1K_TIME_TOTAL
+                     WHERE H1K_EVENT_SEQ = #{h1kEventSeq}
+                     AND USER_SEQ = #{userSeq}
+   		           )
+                   AS UserTime
+  				FROM TB_US_USER ST
+				WHERE USER_SEQ = #{userSeq}
+   				AND USE_YN = 1
+   				--- AND NVL(SLEEP_FL,0) = 0
+   				AND EXISTS
+       			(SELECT 1  
+                    FROM TB_CLS_USER CU
+                    , TB_CLS_MST CM
+                    , TB_DEPT D
+                	WHERE CM.CLS_SEQ = CU.CLS_SEQ
+                    AND D.DEPT_SEQ = CM.DEPT_SEQ
+                    AND D.GT_DEPT_COURSE = 'DP2001'                                    -- CHESS 분원
+                    AND CM.GT_CLS_STATE = 'CL1001'                                     -- 반상태 수업
+                    AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT -- 오늘 회원 수업 기간 확인
+                    AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT -- 오늘 반 수업 기간 확인
+                    AND CU.USER_SEQ = #{userSeq}
+                    AND ROWNUM < 2 
+       			)
+	         	ORDER BY ST.GT_GRADE
+		]]>
+	</select>	
+	
+	<select id="selectTotalUploadCount" resultType="_int">
+		<![CDATA[
+			-- 선택한 이벤트 차수의  업로드 인증  Count
+			SELECT COUNT(*)
+			FROM TB_H1K_EVENT_DLIVE
+			WHERE USE_YN = 'Y'
+			AND EVENT_SEQ = #{eventSeq}
+		]]>
+	</select>
+	
+	<select id="selectOwnUploadCount" resultType="_int" parameterType="string">
+		<![CDATA[
+		-- 사용자가 올린 인증 개수
+		SELECT COUNT(1)
+		FROM TB_H1K_EVENT_DLIVE
+		WHERE USER_SEQ = #{userSeq}
+		      AND USE_YN = 'Y' AND EVENT_SEQ = #{eventSeq}
+		]]>
+	</select>
+	
+	
+	<select id="selectContents" resultMap="content"> 
+		<![CDATA[
+		-- 게시판 현재 페이지 콘텐츠 정보
+		SELECT *
+		FROM (SELECT
+		      TB_H1K_EVENT_DLIVE.*,
+		      rank()
+		      OVER (
+			      ORDER BY GT_DLIVE_TYPE ASC, H1K_DLIVE_SEQ DESC ) AS rnum
+			      FROM TB_H1K_EVENT_DLIVE
+			      WHERE USE_YN = 'Y' AND EVENT_SEQ = #{eventSeq}
+			  )
+		WHERE RNUM BETWEEN (#{rowsPerPage} * (#{page} - 1)) + 1 AND #{rowsPerPage} * #{page}
+		ORDER BY rnum
+		]]>
+	</select>
+	
+	<select id="selectOwnContents" resultMap="content" parameterType="string">
+		<![CDATA[
+		-- 사용자가 올린 콘텐츠 정보
+		SELECT *
+		FROM TB_H1K_EVENT_DLIVE
+		WHERE USER_SEQ = #{userSeq}
+		      AND USE_YN = 'Y' AND EVENT_SEQ = #{eventSeq}
+		ORDER BY REG_TS DESC
+		]]>
+	</select>
+	<resultMap id="content" type="com.gojls.dlive.model.Content">
+		<constructor>
+			<idArg column="H1K_DLIVE_SEQ" javaType="_long" />
+			<arg column="DLIVE_TEXT" javaType="string" />
+			<arg column="IMG_PATH" javaType="string" />
+			<arg column="USER_SEQ" javaType="string" />
+			<arg column="GT_DLIVE_TYPE" javaType="string" />
+		</constructor>
+	</resultMap>
+
+	<select id="selectUserTimeInfo" parameterType="String" resultType="_int">
+		<![CDATA[
+			-- 선택 학생영어 노출 시간
+			SELECT FLOOR(TIME_TOTAL/60) AS totalTime
+					FROM TB_H1K_TIME_TOTAL
+					WHERE H1K_EVENT_SEQ = #{h1kEventSeq}
+					AND USER_SEQ = #{userSeq}
+		]]>
+	</select>	
+
+	<insert id="insertIntoTimeDay">
+		<![CDATA[
+		-- 선택 학생영어 노출 시간 추가 또는 차감
+		INSERT INTO TB_H1K_TIME_DAY (H1K_DAY_SEQ, GT_STATS_TYPE, USER_SEQ, BASE_DT, TIME_SUM, CLS_SEQ, REG_TS, REG_USER_SEQ, REG_USER_NM)
+		VALUES (H1K_DAY_SEQ.NEXTVAL, '1K1010', #{userSeq}, TO_CHAR(SYSDATE, 'YYYYMMDD'), #{timeCount}, NULL, SYSTIMESTAMP, #{userSeq}, #{userName})
+		]]>
+	</insert>
+	
+	<insert id="insertText" >
+		<![CDATA[
+		-- 이벤트 텍스트 인증 추가
+		INSERT INTO TB_H1K_EVENT_DLIVE (H1K_DLIVE_SEQ, GT_DLIVE_TYPE, DLIVE_TEXT, IMG_PATH, USER_SEQ, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_NM, EVENT_SEQ)
+		VALUES (H1K_DLIVE_SEQ.NEXTVAL, '1K3002', #{text}, NULL, #{userSeq}, 'Y', SYSTIMESTAMP, #{userSeq}, #{userName}, #{eventSeq})
+		]]>
+	</insert>
+	
+	<insert id="insertImage">
+		<![CDATA[
+		-- 이벤트 이미지 인증 추가
+		INSERT INTO TB_H1K_EVENT_DLIVE (H1K_DLIVE_SEQ, GT_DLIVE_TYPE, DLIVE_TEXT, IMG_PATH, USER_SEQ, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_NM, EVENT_SEQ)
+		VALUES (H1K_DLIVE_SEQ.NEXTVAL, '1K3001', #{text}, #{imageUrl}, #{userSeq}, 'Y', SYSTIMESTAMP, #{userSeq}, #{userName}, #{eventSeq})
+		]]>
+	</insert>
+	
+	<update id="updateDLiveUseInfo">
+		<![CDATA[
+			-- 올린 인증 삭제 --> 정보 사용 안함으로  
+			UPDATE  TB_H1K_EVENT_DLIVE SET USE_YN = 'N' 
+			WHERE H1K_DLIVE_SEQ = #{dliveSeq} 
+			AND  USER_SEQ = #{userSeq}
+		]]>
+	</update>
+	
+	
+	
+</mapper>

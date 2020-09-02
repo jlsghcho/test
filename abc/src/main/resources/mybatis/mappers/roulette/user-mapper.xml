@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.roulette.dao.UserDao">
+	<select id="selectUser" parameterType="com.gojls.common.model.User" resultMap="user">
+		<![CDATA[
+		SELECT
+			U.USER_SEQ,
+			U.USER_ID,
+			U.USER_NM,
+			U.GT_USER_TYPE,
+			(
+				SELECT (
+					CASE
+						WHEN COUNT(1) > 0 THEN 1
+						ELSE 0
+					END
+				)
+				FROM TB_CLS_USER CU, TB_CLS_MST C, TB_DEPT D
+				WHERE
+					U.USER_SEQ = CU.USER_SEQ AND
+					CU.CLS_SEQ = C.CLS_SEQ AND
+					C.DEPT_SEQ = D.DEPT_SEQ AND
+					D.GT_DEPT_COURSE = 'DP2001' AND
+					C.GT_CLS_STATE = 'CL1001' AND
+					TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT AND
+					TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN C.START_DT AND C.END_DT
+				) AS IS_CHESS_STUDENT,
+			(
+				SELECT (
+					CASE
+						WHEN COUNT(1) > 0 THEN 1
+						ELSE 0
+					END
+				)
+				FROM TB_ROULETTE_USER_REWARD UR
+				WHERE U.USER_SEQ = UR.USER_SEQ
+			) AS TO_BE_REWARDED
+		FROM TB_US_USER U
+		WHERE
+			USER_SEQ = #{sequence}
+		]]>
+	</select>
+
+	<resultMap id="user" type="com.gojls.roulette.model.User">
+		<constructor>
+			<idArg column="USER_SEQ" javaType="string" />
+			<arg column="USER_ID" javaType="string" />
+			<arg column="USER_NM" javaType="string" />
+			<arg column="GT_USER_TYPE" javaType="string" />
+			<arg column="IS_CHESS_STUDENT" javaType="_boolean" />
+			<arg column="TO_BE_REWARDED" javaType="_boolean" />
+		</constructor>
+	</resultMap>
+</mapper>

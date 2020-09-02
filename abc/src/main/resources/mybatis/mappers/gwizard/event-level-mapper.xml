@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventLevelDao">
+
+	<select id="selectEventLevel" parameterType="eLevel" resultType="eLevel">
+		<![CDATA[
+			SELECT 
+			  EL.EVENT_LEVEL_SEQ AS eventLevelSeq
+			  , EL.LEVEL_NM AS levelNm
+			  , EL.NEXT_LEVEL_SEQ AS nextLevelSeq
+			  , (SELECT LEVEL_NM FROM TB_EVENT_LEVEL WHERE EVENT_LEVEL_SEQ = EL.NEXT_LEVEL_SEQ) AS nextLevelNm
+			  , MOVIE_CNT AS movieCnt
+			  , VIEW_CNT AS viewCnt
+			  , QUIZ_CNT AS quizCnt
+			  , PASS_CNT AS passCnt
+			  , STAGE_NO AS stageNo
+			FROM TB_EVENT_LEVEL EL
+			WHERE EL.EVENT_LEVEL_SEQ = #{eventLevelSeq}
+		]]>
+	</select>  
+	
+</mapper>

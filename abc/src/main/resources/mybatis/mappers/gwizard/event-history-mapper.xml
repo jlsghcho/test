@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventHistoryDao">
+
+	<select id="selectEventHistoryList" parameterType="java.util.Map" resultType="eMovie">
+		<![CDATA[
+			SELECT 
+			  DISTINCT EH.EVENT_MOVIE_SEQ AS eventMovieSeq
+			  , EM.MOVIE_NM AS movieNm
+			FROM TB_EVENT_HISTORY EH, TB_EVENT_MOVIE EM
+			WHERE EH.EVENT_MOVIE_SEQ = EM.EVENT_MOVIE_SEQ
+			AND EH.EVENT_USER_SEQ = #{eventUserSeq}
+			AND EH.STATUS = 1
+			ORDER BY MIN(EH.REG_TS) 
+		]]>
+	</select>  
+
+	<select id="selectEventHistoryCnt" parameterType="eHistory" resultType="eUser">
+		<![CDATA[
+			SELECT 
+			  COUNT(DISTINCT EH.EVENT_MOVIE_SEQ) AS movieCnt
+			  , SUM(1) AS viewCnt
+			FROM TB_EVENT_HISTORY EH
+			WHERE EH.STATUS = 1
+		]]>
+		<if test="eventSeq != null and eventSeq != ''">
+		<![CDATA[
+			AND EH.EVENT_SEQ = #{eventSeq}
+		]]>
+		</if>
+		<if test="eventUserSeq != null and eventUserSeq != ''">
+		<![CDATA[
+			AND EH.EVENT_USER_SEQ = #{eventUserSeq}
+		]]>
+		</if>
+		<if test="eventMovieSeq != null and eventMovieSeq != ''">
+		<![CDATA[
+			AND EH.EVENT_MOVIE_SEQ = #{eventMovieSeq}
+		]]>
+		</if>
+	</select>  
+	
+	<insert id="insertEventHistory" parameterType="eHistory">
+		<selectKey keyProperty="eventHistorySeq" resultType="Integer" order="BEFORE">
+			SELECT EVENT_HISTORY_SEQ.NEXTVAL AS eventHistorySeq FROM DUAL
+		</selectKey>
+		<![CDATA[
+		INSERT INTO TB_EVENT_HISTORY ( 
+		    EVENT_HISTORY_SEQ,
+		    EVENT_USER_SEQ,
+		    EVENT_SEQ,
+		    EVENT_MOVIE_SEQ,
+		    STATUS,
+		    REG_TS,
+		    REG_USER_SEQ,
+		    REG_USER_NM
+		  ) VALUES ( 
+		  	#{eventHistorySeq}
+		  	, #{eventUserSeq}
+		  	, #{eventSeq}
+	           , #{eventMovieSeq}
+	           , 0
+	           , SYSTIMESTAMP
+	           , #{regUserSeq}
+	           , #{regUserNm}  
+	         )
+		]]>
+	</insert>
+	
+	<update id="updateEventHistory" parameterType="eHistory">
+	<![CDATA[
+		UPDATE TB_EVENT_HISTORY a SET 
+			STATUS = 1
+			, MOD_USER_SEQ = #{regUserSeq}
+			, MOD_USER_NM = #{regUserNm}
+			, MOD_TS = SYSTIMESTAMP
+		WHERE EVENT_HISTORY_SEQ = #{eventHistorySeq}
+			AND trunc((to_date(to_char(sysdate,'yyyymmdd hh24:mi:ss'),'yyyymmdd hh24:mi:ss')-to_date(to_char(reg_ts,'yyyymmdd hh24:mi:ss'),'yyyymmdd hh24:mi:ss'))*24*60) >= #{leastTime}
+			AND (SELECT NVL(trunc((to_date(to_char(sysdate,'yyyymmdd hh24:mi:ss'),'yyyymmdd hh24:mi:ss')-to_date(to_char(MAX(mod_ts),'yyyymmdd hh24:mi:ss'),'yyyymmdd hh24:mi:ss'))*24*60),100) FROM tb_event_history WHERE event_user_seq = a.event_user_seq AND status = 1) >= #{leastTime}
+	]]>
+	</update>
+	
+</mapper>

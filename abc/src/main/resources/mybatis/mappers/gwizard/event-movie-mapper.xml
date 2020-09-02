@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventMovieDao">
+
+	<select id="selectEventMovieList" parameterType="eMovie" resultType="eMovie">
+		<![CDATA[
+			SELECT 
+			  EM.EVENT_MOVIE_SEQ AS eventMovieSeq
+			  , EM.GROUP_SEQ AS groupSeq
+			  , EM.GROUP_NM AS groupNm
+			  , EM.MOVIE_NM AS movieNm
+			  , EM.MOVIE_URL AS movieUrl
+			  , CASE WHEN ((GROUP_SEQ-1)*${groupCnt}) <= NVL((SELECT MOVIE_CNT FROM TB_EVENT_USER WHERE EVENT_USER_SEQ = #{eventUserSeq}),0) THEN 1 ELSE 0 END AS isOpen
+			  , NVL((SELECT SUM(DECODE(STATUS, 1, 1, 0)) FROM TB_EVENT_HISTORY WHERE EVENT_MOVIE_SEQ = EM.EVENT_MOVIE_SEQ AND EVENT_USER_SEQ = #{eventUserSeq}),0) AS viewCnt
+			FROM TB_EVENT_MOVIE EM
+			WHERE EM.EVENT_SEQ = #{eventSeq}
+			  AND EM.USE_YN = 1
+			ORDER BY EM.SORT_SEQ
+		]]>
+	</select>  
+
+	<select id="selectEventMovieListByUser" parameterType="eUser" resultType="eMovie">
+		<![CDATA[
+			SELECT 
+			  EM.EVENT_MOVIE_SEQ AS eventMovieSeq
+			  , EM.MOVIE_NM AS movieNm
+			  , EM.MOVIE_URL AS movieUrl
+			  , MIN(EH.REG_TS) AS regTs
+			FROM TB_EVENT_MOVIE EM, TB_EVENT_HISTORY EH
+			WHERE EM.EVENT_MOVIE_SEQ = EH.EVENT_MOVIE_SEQ
+			AND EM.EVENT_SEQ = #{eventSeq}
+			AND EM.USE_YN = 1
+			AND EH.EVENT_USER_SEQ = #{eventUserSeq}
+			AND EH.STATUS = 1
+			GROUP BY EM.EVENT_MOVIE_SEQ, EM.MOVIE_NM, EM.MOVIE_URL
+			ORDER BY DBMS_RANDOM.RANDOM
+		]]>
+	</select>   
+
+	<select id="selectEventRandomMovieList" parameterType="eMovie" resultType="eMovie">
+		<![CDATA[
+			SELECT 
+			  EM.EVENT_MOVIE_SEQ AS eventMovieSeq
+			  , EM.MOVIE_NM AS movieNm
+			  , EM.MOVIE_URL AS movieUrl
+			FROM TB_EVENT_MOVIE EM
+			WHERE EM.EVENT_SEQ = #{eventSeq}
+			AND EM.USE_YN = 1
+			ORDER BY DBMS_RANDOM.RANDOM
+		]]>
+	</select> 
+
+	<select id="selectEventMovie" parameterType="eMovie" resultType="eMovie">
+		<![CDATA[
+			SELECT 
+			  EM.EVENT_MOVIE_SEQ AS eventMovieSeq
+			  , EM.EVENT_SEQ AS eventSeq
+			  , EM.EVENT_MOVIE_SEQ AS eventMovieSeq
+			  , EM.MOVIE_NM AS movieNm
+			  , EM.MOVIE_URL AS movieUrl
+			  , EM.SORT_SEQ AS sortSeq
+			  , (SELECT COUNT(1) FROM TB_EVENT_HISTORY WHERE EVENT_MOVIE_SEQ = EM.EVENT_MOVIE_SEQ AND EVENT_USER_SEQ = #{eventUserSeq} AND STATUS = 1) AS viewCnt
+			  , EM.LEAST_TIME AS leastTime
+			FROM TB_EVENT_MOVIE EM
+			WHERE EM.EVENT_MOVIE_SEQ = #{eventMovieSeq}
+			AND EM.USE_YN = 1
+		]]>
+	</select> 
+	
+</mapper>

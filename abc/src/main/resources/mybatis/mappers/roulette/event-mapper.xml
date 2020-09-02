@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.roulette.dao.EventDao">
+	<select id="selectLastStartedEvent" resultMap="event">
+		<![CDATA[
+		SELECT
+			ROULETTE_EVENT_SEQ,
+			ROULETTE_EVENT_NM,
+			START_DT,
+			END_DT
+		FROM TB_ROULETTE_EVENT
+		WHERE
+			TO_CHAR(SYSDATE, 'yyyyMMdd') >= START_DT AND
+			ROWNUM = 1
+		ORDER BY ROULETTE_EVENT_SEQ DESC, END_DT DESC, START_DT DESC
+		]]>
+	</select>
+	<select id="selectOngoingEvent" resultMap="event">
+		<![CDATA[
+		SELECT
+			ROULETTE_EVENT_SEQ,
+			ROULETTE_EVENT_NM,
+			START_DT,
+			END_DT
+		FROM TB_ROULETTE_EVENT
+		WHERE
+			TO_CHAR(SYSDATE, 'yyyyMMdd') BETWEEN START_DT AND END_DT AND
+			ROWNUM = 1
+		ORDER BY ROULETTE_EVENT_SEQ DESC, END_DT DESC, START_DT DESC
+		]]>
+	</select>
+	<select id="selectUpcomingEvent" resultMap="event">
+		<![CDATA[
+		SELECT
+			ROULETTE_EVENT_SEQ,
+			ROULETTE_EVENT_NM,
+			START_DT,
+			END_DT
+		FROM TB_ROULETTE_EVENT
+		WHERE
+			TO_CHAR(SYSDATE, 'yyyyMMdd') <= END_DT AND
+			ROWNUM = 1
+		ORDER BY ROULETTE_EVENT_SEQ DESC, END_DT DESC, START_DT DESC
+		]]>
+	</select>
+	<select id="selectEvents" parameterType="_long" resultMap="event">
+		<![CDATA[
+		SELECT
+			ROULETTE_EVENT_SEQ,
+			ROULETTE_EVENT_NM,
+			START_DT,
+			END_DT
+		FROM TB_ROULETTE_EVENT
+		WHERE ROULETTE_EVENT_SEQ = #{sequence}
+		]]>
+	</select>
+
+	<resultMap id="event" type="com.gojls.roulette.model.Event">
+		<constructor>
+			<idArg javaType="_long" column="ROULETTE_EVENT_SEQ" />
+			<arg javaType="string" column="ROULETTE_EVENT_NM" />
+			<arg javaType="string" column="START_DT" />
+			<arg javaType="string" column="END_DT" />
+		</constructor>
+	</resultMap>
+</mapper>

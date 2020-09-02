@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.ems.gwizard.dao.EventAttendanceDao">
+
+	<select id="selectEventAttendanceList" parameterType="java.util.Map" resultType="eAttendance">
+		<![CDATA[
+			SELECT 
+			  EVENT_ATTENDANCE_SEQ AS eventAttendanceSeq
+			  , ACCESS_DT AS accessDt
+			  , ACCESS_CNT AS accessCnt
+			FROM TB_EVENT_ATTENDANCE EA
+			WHERE EVENT_USER_SEQ = #{eventUserSeq}
+			AND ACCESS_CNT > 0
+			ORDER BY ACCESS_DT 
+		]]>
+	</select>  
+
+	<select id="selectEventAttendanceCnt" parameterType="eAttendance" resultType="int">
+		<![CDATA[
+			SELECT 
+			  SUM(ACCESS_CNT) AS accessCnt
+			FROM TB_EVENT_ATTENDANCE EA
+			WHERE EVENT_USER_SEQ = #{eventUserSeq}
+			AND ACCESS_DT =  TO_CHAR(SYSDATE, 'YYYYMMDD')
+		]]>
+	</select>  
+	
+	<insert id="mergeEventAttendance" parameterType="eAttendance">
+		<![CDATA[
+		MERGE INTO TB_EVENT_ATTENDANCE A
+	     USING DUAL U ON ( A.EVENT_USER_SEQ = #{eventUserSeq} AND A.ACCESS_DT = TO_CHAR(SYSDATE, 'YYYYMMDD'))
+	     WHEN NOT MATCHED THEN
+	         INSERT( 
+			    EVENT_ATTENDANCE_SEQ,
+			    EVENT_USER_SEQ,
+			    ACCESS_DT,
+			    ACCESS_CNT,
+			    REG_TS,
+			    REG_USER_SEQ,
+			    REG_USER_NM
+			  ) VALUES ( 
+			  	EVENT_ATTENDANCE_SEQ.NEXTVAL
+			  	, #{eventUserSeq}
+	            , TO_CHAR(SYSDATE, 'YYYYMMDD')
+	            , 1
+	            , SYSTIMESTAMP
+	            , #{regUserSeq}
+	            , #{regUserNm}  
+	          )
+	     WHEN MATCHED THEN
+	         UPDATE SET
+	                ACCESS_CNT = ACCESS_CNT + 1,
+	                MOD_TS = SYSTIMESTAMP,
+	                MOD_USER_SEQ = #{regUserSeq},
+	                MOD_USER_NM = #{regUserNm}
+		]]>
+	</insert>
+	
+</mapper>

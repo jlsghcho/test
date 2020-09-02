@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.ace.dao.AceDao">
+	
+	<select id="selectEvents" resultMap="event">
+		<![CDATA[
+		SELECT
+			WANTED_EVENT_SEQ,
+			EVENT_NM,
+			START_DT,
+			END_DT, 
+			ANNOUNCE_DT
+	    FROM TB_WANTED_EVENT
+		]]>
+	</select>
+	<resultMap id="event" type="com.gojls.ace.model.Event">
+		<constructor>
+			<idArg column="WANTED_EVENT_SEQ" javaType="_int" />
+			<arg column="EVENT_NM" javaType="string" />
+			<arg column="START_DT" javaType="string" />
+			<arg column="END_DT" javaType="string" />
+			<arg column="ANNOUNCE_DT" javaType="string" />
+		</constructor>
+	</resultMap>
+	
+	<select id="selectUser" resultMap="user" parameterType="string">
+		<![CDATA[
+		SELECT
+			USER_SEQ,
+			USER_ID,
+			USER_NM,
+			GT_GRADE,
+			SCHOOL_NM
+		FROM TB_US_USER
+		WHERE USER_SEQ = #{userSequence}
+		]]>
+	</select>
+	<resultMap id="user" type="com.gojls.ace.model.User">
+		<constructor>
+			<idArg column="USER_SEQ" javaType="string" />
+			<arg column="USER_ID" javaType="string" />
+			<arg column="USER_NM" javaType="string" />
+			<arg column="GT_GRADE" javaType="string" />
+			<arg column="SCHOOL_NM" javaType="string" />
+		</constructor>
+	</resultMap>
+	
+	<select id="selectIfAttending" resultType="_int" parameterType="string">
+		<![CDATA[
+		-- 회원 ACE 분원 재원 여부
+		SELECT COUNT(1) AS CNT -- RETURN : 1 재원, 0 비재원
+		FROM TB_CLS_USER CU, TB_CLS_MST CM, TB_DEPT D
+		WHERE CM.CLS_SEQ = CU.CLS_SEQ
+		      AND D.DEPT_SEQ = CM.DEPT_SEQ
+		      AND D.GT_DEPT_COURSE = 'DP2002' -- ACE 분원
+		      AND CM.GT_CLS_STATE = 'CL1001' -- 반상태 수업
+		      AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT -- 오늘 회원 수업 기간 확인
+		      AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT -- 오늘 반 수업 기간 확인
+		      AND CU.USER_SEQ = #{userSequence} -- 변수 회원 SID (TB_US_USER.USER_SEQ)
+		      AND ROWNUM < 2 -- 리턴값이 1 또는 0 조건식
+		]]>
+	</select>
+
+	<select id="selectTopReportingRegions" resultMap="regionCountPair">
+		<![CDATA[
+		SELECT *
+		FROM (SELECT
+			      "Z".*,
+			      ROWNUM AS "RN"
+		      FROM (SELECT
+			            ARREST_AREA,
+			            COUNT(1) AS "AREA_WANTED_CNT"
+		            FROM TB_WANTED_EVENT_ARREST "A"
+		            WHERE "A".WANTED_EVENT_SEQ = #{eventSequence}
+		                  AND "A".WANTED_TYPE = '1'
+		                  AND "A".USE_YN = 1
+		                  AND ARREST_AREA IS NOT NULL -- index full scan 조건
+		            GROUP BY ARREST_AREA
+		            ORDER BY COUNT(1) DESC, ARREST_AREA
+		           ) "Z"
+		     ) "Z2"
+		WHERE "Z2"."RN" < 4
+		]]>
+	</select>
+	<select id="selectTopArrestingRegions" resultMap="regionCountPair">
+		<![CDATA[
+		SELECT *
+		FROM (SELECT
+			      "Z".*,
+			      ROWNUM AS "RN"
+		      FROM (SELECT
+			            ARREST_AREA,
+			            COUNT(1) AS "AREA_WANTED_CNT"
+		            FROM TB_WANTED_EVENT_ARREST "A"
+		            WHERE "A".WANTED_EVENT_SEQ = #{eventSequence}
+		                  AND "A".WANTED_TYPE = '2'
+		                  AND "A".USE_YN = 1
+		                  AND ARREST_AREA IS NOT NULL -- index full scan 조건
+		            GROUP BY ARREST_AREA
+		            ORDER BY COUNT(1) DESC, ARREST_AREA
+		           ) "Z"
+		     ) "Z2"
+		WHERE "Z2"."RN" < 4
+		]]>
+	</select>
+	<resultMap id="regionCountPair" type="com.gojls.ace.model.RegionCountPair">
+		<constructor>
+			<arg column="ARREST_AREA" javaType="string" />
+			<arg column="AREA_WANTED_CNT" javaType="_int" />
+		</constructor>
+	</resultMap>
+
+	<select id="selectTotalReportCount" resultType="_int">
+		<![CDATA[
+		SELECT COUNT(1)
+		FROM TB_WANTED_EVENT_ARREST
+		WHERE WANTED_EVENT_SEQ = #{eventSequence}
+		      AND USE_YN = 1
+		      AND WANTED_TYPE = '1'
+		]]>
+	</select>
+	<select id="selectTotalArrestCount" resultType="_int">
+		<![CDATA[
+		SELECT COUNT(1)
+		FROM TB_WANTED_EVENT_ARREST
+		WHERE WANTED_EVENT_SEQ = #{eventSequence}
+		      AND USE_YN = 1
+		      AND WANTED_TYPE = '2'
+		]]>
+	</select>
+
+	<select id="selectMyArrestCount" resultType="_int">
+		<![CDATA[
+		SELECT COUNT(1)
+		FROM TB_WANTED_EVENT_ARREST
+		WHERE WANTED_EVENT_SEQ = #{eventSequence}
+		      AND REG_USER_SEQ = #{userSequence}
+		      AND USE_YN = 1
+		      AND WANTED_TYPE = '2'
+		]]>
+	</select>
+	<select id="selectMyReportCount" resultType="_int">
+		<![CDATA[
+		SELECT COUNT(1)
+		FROM TB_WANTED_EVENT_ARREST
+		WHERE WANTED_EVENT_SEQ = #{eventSequence}
+		      AND REG_USER_SEQ = #{userSequence}
+		      AND USE_YN = 1
+		      AND WANTED_TYPE = '1'
+		]]>
+	</select>
+
+	<select id="selectReports" resultMap="reportingContent">
+		<![CDATA[
+		SELECT *
+		FROM (
+			SELECT
+				ROWNUM "RN",
+				A.*
+			FROM (
+				     SELECT *
+				     FROM TB_WANTED_EVENT_ARREST
+				     WHERE WANTED_EVENT_SEQ = #{eventSequence}
+				           AND WANTED_TYPE = '1'
+				           AND USE_YN = 1
+				           AND REG_USER_SEQ = #{userSequence}
+				     ORDER BY ARREST_SEQ DESC
+			     ) "A"
+			UNION ALL
+			SELECT
+				(ROWNUM + #{numberOfLeadingRows}) "RN2",
+				"B".*
+			FROM (
+				     SELECT *
+				     FROM TB_WANTED_EVENT_ARREST
+				     WHERE WANTED_EVENT_SEQ = #{eventSequence}
+				           AND WANTED_TYPE = '1'
+				           AND USE_YN = 1
+				           AND REG_USER_SEQ <> #{userSequence}
+				     ORDER BY ARREST_SEQ DESC
+			     ) "B"
+		)
+		WHERE "RN" BETWEEN (#{rowsPerPage} * (#{page} - 1)) + 1 AND (#{rowsPerPage} * #{page})
+		ORDER BY "RN"
+		]]>
+	</select>
+	<resultMap id="reportingContent" type="com.gojls.ace.model.Content">
+		<constructor>
+			<idArg column="ARREST_SEQ" javaType="_int" />
+			<arg column="WANTED_EVENT_SEQ" javaType="_int" />
+			<arg column="WANTED_TYPE" javaType="string" />
+			<arg column="QUESTION_TYPE" javaType="string" />
+			<arg column="QUESTION_NUMBER" javaType="_int" />
+			<arg column="ARREST_AREA" javaType="string" />
+			<arg column="IMG_PATH1" javaType="string" />
+			<arg column="IMG_PATH2" javaType="string" />
+			<arg column="USER_COMMENT" javaType="string" />
+			<arg column="REG_USER_SEQ" javaType="string" />
+			<arg column="REG_USER_ID" javaType="string" />
+			<arg column="REG_USER_NM" javaType="string" />
+			<arg column="GT_GRADE" javaType="string" />
+			<arg column="SCHOOL_NM" javaType="string" />
+		</constructor>
+	</resultMap>
+
+	<select id="selectArrests" resultMap="arrestingContent">
+		<![CDATA[
+		SELECT *
+		FROM (
+			SELECT
+				ROWNUM "RN",
+				A.*
+			FROM (
+				     SELECT *
+				     FROM TB_WANTED_EVENT_ARREST
+				     WHERE WANTED_EVENT_SEQ = #{eventSequence}
+				           AND WANTED_TYPE = '2'
+				           AND USE_YN = 1
+				           AND REG_USER_SEQ = #{userSequence}
+				     ORDER BY ARREST_SEQ DESC
+			     ) "A"
+			UNION ALL
+			SELECT
+				(ROWNUM + #{numberOfLeadingRows}) "RN2",
+				"B".*
+			FROM (
+				     SELECT *
+				     FROM TB_WANTED_EVENT_ARREST
+				     WHERE WANTED_EVENT_SEQ = #{eventSequence}
+				           AND WANTED_TYPE = '2'
+				           AND USE_YN = 1
+				           AND REG_USER_SEQ <> #{userSequence}
+				     ORDER BY ARREST_SEQ DESC
+			     ) "B"
+		)
+		WHERE "RN" BETWEEN (#{rowsPerPage} * (#{page} - 1)) + 1 AND (#{rowsPerPage} * #{page})
+		ORDER BY "RN"
+		]]>
+	</select>
+	<resultMap id="arrestingContent" type="com.gojls.ace.model.Content">
+		<constructor>
+			<idArg column="ARREST_SEQ" javaType="_int" />
+			<arg column="WANTED_EVENT_SEQ" javaType="_int" />
+			<arg column="WANTED_TYPE" javaType="string" />
+			<arg column="QUESTION_TYPE" javaType="string" />
+			<arg column="QUESTION_NUMBER" javaType="_int" />
+			<arg column="ARREST_AREA" javaType="string" />
+			<arg column="IMG_PATH1" javaType="string" />
+			<arg column="IMG_PATH2" javaType="string" />
+			<arg column="REG_USER_SEQ" javaType="string" />
+			<arg column="REG_USER_ID" javaType="string" />
+			<arg column="REG_USER_NM" javaType="string" />
+			<arg column="GT_GRADE" javaType="string" />
+			<arg column="SCHOOL_NM" javaType="string" />
+		</constructor>
+	</resultMap>
+
+	<select id="selectReportCountByNumber" resultType="int">
+		<![CDATA[
+		SELECT COUNT(1)
+		FROM TB_WANTED_EVENT_ARREST
+		WHERE WANTED_EVENT_SEQ = #{eventSequence}
+		      AND REG_USER_SEQ = #{userSequence}
+		      AND WANTED_TYPE = '1'
+		      AND USE_YN = 1
+		      AND QUESTION_TYPE = #{questionType}
+		      AND QUESTION_NUMBER = #{questionNumber}
+		]]>
+	</select>
+	<select id="selectArrestCountByNumber" resultType="int">
+		<![CDATA[
+		SELECT COUNT(1)
+		FROM TB_WANTED_EVENT_ARREST
+		WHERE WANTED_EVENT_SEQ = #{eventSequence}
+		      AND REG_USER_SEQ = #{userSequence}
+		      AND WANTED_TYPE = '2'
+		      AND USE_YN = 1
+		      AND QUESTION_TYPE = #{questionType}
+		      AND QUESTION_NUMBER = #{questionNumber}
+		]]>
+	</select>
+
+	<insert id="insertReport" parameterType="com.gojls.ace.model.Content">
+		<![CDATA[
+		INSERT INTO TB_WANTED_EVENT_ARREST (ARREST_SEQ, WANTED_EVENT_SEQ, WANTED_TYPE, QUESTION_TYPE, QUESTION_NUMBER, ARREST_AREA, IMG_PATH1, IMG_PATH2, USER_COMMENT, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_ID, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_ID, MOD_USER_NM, SCHOOL_NM, GT_GRADE)
+		VALUES (ARREST_SEQ.NEXTVAL, #{eventSequence}, '1', #{questionType}, #{questionNumber}, #{region}, #{pathToImage1}, #{pathToImage2}, #{comment}, 1, SYSDATE, #{userSequence}, #{userId}, #{userName}, SYSDATE, #{userSequence}, #{userId}, #{userName}, #{schoolName}, #{grade})
+		]]>
+	</insert>
+	<insert id="insertArrest" parameterType="com.gojls.ace.model.Content">
+		<![CDATA[
+		INSERT INTO TB_WANTED_EVENT_ARREST (ARREST_SEQ, WANTED_EVENT_SEQ, WANTED_TYPE, QUESTION_TYPE, QUESTION_NUMBER, ARREST_AREA, IMG_PATH1, IMG_PATH2, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_ID, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_ID, MOD_USER_NM, SCHOOL_NM, GT_GRADE)
+		VALUES (ARREST_SEQ.NEXTVAL, #{eventSequence}, '2', #{questionType}, #{questionNumber}, #{region}, #{pathToImage1}, #{pathToImage2}, 1, SYSDATE, #{userSequence}, #{userId}, #{userName}, SYSDATE, #{userSequence}, #{userId}, #{userName}, #{schoolName}, #{grade})
+		]]>
+	</insert>
+
+	<update id="hideContent" parameterType="_int">
+		<![CDATA[
+		UPDATE TB_WANTED_EVENT_ARREST
+		SET USE_YN = 0
+		WHERE ARREST_SEQ = #{sequence}
+		]]>
+	</update>
+	
+	<select id="selectLastEvent" resultMap="event">
+		<![CDATA[
+		SELECT WANTED_EVENT_SEQ, 
+			EVENT_NM, 
+			START_DT, 
+			END_DT,  
+			ANNOUNCE_DT 
+		FROM (SELECT * FROM TB_WANTED_EVENT_INFO ORDER BY WANTED_EVENT_SEQ DESC)  
+		WHERE ROWNUM = 1 
+		]]>
+	</select>
+	
+	<select id="selectTargetEvent" resultMap="event" parameterType="_int">
+		<![CDATA[
+		SELECT WANTED_EVENT_SEQ, 
+			EVENT_NM, 
+			START_DT, 
+			END_DT,  
+			ANNOUNCE_DT 
+		FROM TB_WANTED_EVENT_INFO  
+		WHERE WANTED_EVENT_SEQ = #{eventSequence} 
+		]]>
+	</select>
+
+		
+	<select id="selectUserInfo" resultMap="userInfo" parameterType="string">
+		<![CDATA[
+		SELECT DISTINCT	US.USER_SEQ,    
+			US.USER_ID,    
+            US.USER_NM,    
+          	US.GT_GRADE,    
+          	US.SCHOOL_NM,    
+          	D.DEPT_SEQ,   
+            D.DEPT_NM   
+		FROM TB_US_USER US, 
+        	TB_CLS_MST CM,  
+  			TB_CLS_USER CU, 
+            TB_DEPT D 
+		WHERE  CU.USER_SEQ = US.USER_SEQ 
+        	AND CM.CLS_SEQ = CU.CLS_SEQ 
+            AND D.DEPT_SEQ = CM.DEPT_SEQ      
+            AND D.GT_DEPT_COURSE = 'DP2002' -- ACE 분원 
+		    AND CM.GT_CLS_STATE = 'CL1001' -- 반상태 수업  
+	       	AND TO_CHAR(SYSDATE,'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT 
+            AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT -- 오늘 반 수업 기간 확인 
+	       	AND US.USER_SEQ = #{userSequence}
+		]]>
+	</select>
+	<resultMap id="userInfo" type="com.gojls.ace.model.UserInfo">
+		<constructor>
+			<idArg column="USER_SEQ" javaType="string" />
+			<arg column="USER_ID" javaType="string" />
+			<arg column="USER_NM" javaType="string" />
+			<arg column="GT_GRADE" javaType="string" />
+			<arg column="SCHOOL_NM" javaType="string" />
+			<arg column="DEPT_SEQ" javaType="string" />
+			<arg column="DEPT_NM" javaType="string" />
+		</constructor>
+	</resultMap>
+	
+	
+	<select id="selectTeachers" resultMap="teacher" parameterType="string">
+		<![CDATA[
+			SELECT DISTINCT CM.TMAN_EMP_SEQ AS TMAN_EMP_SEQ, 
+							CM.TMAN_EMP_NM AS TMAN_EMP_NM, 
+							CM.GT_CLS_WORK_TYPE  AS GT_CLS_WORK_TYPE
+			FROM TB_CLS_MST CM, TB_CLS_USER CU
+			WHERE CM.CLS_SEQ = CU.CLS_SEQ
+					AND TO_CHAR(SYSDATE,'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+					AND CU.USER_SEQ = #{userSequence}
+                	AND TMAN_EMP_SEQ is not null  
+                	AND TMAN_EMP_NM is not null                                        
+			ORDER BY CM.GT_CLS_WORK_TYPE ASC
+		]]>
+	</select>
+	<select id="selectTeacher" resultMap="teacher" parameterType="string">
+		<![CDATA[
+					SELECT DISTINCT TMAN_EMP_SEQ AS TMAN_EMP_SEQ, 
+			      TMAN_EMP_NM AS TMAN_EMP_NM,
+		        	      GT_CLS_WORK_TYPE
+			FROM TB_CLS_MST 
+			WHERE TMAN_EMP_SEQ = #{userSequence}
+                              AND ROWNUM < 2 
+		]]>
+	</select>
+	<resultMap id="teacher" type="com.gojls.ace.model.Teacher">
+		<constructor>
+			<idArg column="TMAN_EMP_SEQ" javaType="string" />
+			<arg column="TMAN_EMP_NM" javaType="string" />
+			<arg column="GT_CLS_WORK_TYPE" javaType="string" />
+		</constructor>
+	</resultMap>
+	
+			
+	<insert id="insertReportNew" parameterType="com.gojls.ace.model.ContentNew">
+		<![CDATA[
+		INSERT INTO TB_WANTED_EVENT_ARREST (ARREST_SEQ,	WANTED_EVENT_SEQ, WANTED_TYPE, QUESTION_TYPE, QUESTION_NUMBER, IMG_PATH1, IMG_PATH2,USER_COMMENT, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_ID, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_ID, MOD_USER_NM, SCHOOL_NM, GT_GRADE,DEPT_NM, DEPT_SEQ, TMAN_EMP_NM, TMAN_EMP_SEQ)
+		VALUES (ARREST_SEQ.NEXTVAL, #{eventSequence}, '1', #{questionType}, #{questionNumber}, #{pathToImage1}, #{pathToImage2},#{comment}, 1, SYSDATE, #{userSequence}, #{userId}, #{userName}, SYSDATE, #{userSequence}, #{userId}, #{userName}, #{schoolName}, #{grade},#{departmentName}, #{departmentSequence}, #{teacherName},#{teacherSequence})
+		]]>
+	</insert>
+	<insert id="insertArrestNew" parameterType="com.gojls.ace.model.ContentNew">
+		<![CDATA[
+		INSERT INTO TB_WANTED_EVENT_ARREST (ARREST_SEQ, WANTED_EVENT_SEQ, WANTED_TYPE, QUESTION_TYPE, QUESTION_NUMBER, IMG_PATH1, IMG_PATH2, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_ID, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_ID, MOD_USER_NM, SCHOOL_NM, GT_GRADE, DEPT_NM, DEPT_SEQ, TMAN_EMP_NM, TMAN_EMP_SEQ)
+		VALUES (ARREST_SEQ.NEXTVAL, #{eventSequence}, '2', #{questionType}, #{questionNumber}, #{pathToImage1}, #{pathToImage2}, 1, SYSDATE, #{userSequence}, #{userId}, #{userName}, SYSDATE, #{userSequence}, #{userId}, #{userName}, #{schoolName}, #{grade}, #{departmentName}, #{departmentSequence}, #{teacherName},#{teacherSequence})
+		]]>
+	</insert>
+	
+	
+	<select id="selectTeacherRanking" resultMap="selectRanking" parameterType="string">
+		<![CDATA[
+			  SELECT * FROM ( SELECT  DEPT_SEQ
+		                  , DEPT_NM
+			              , TMAN_EMP_SEQ AS USER_SEQ
+			              , TMAN_EMP_NM  AS USER_NM
+			              , COUNT(ARREST_SEQ) AS TOTALSUM
+			              , MAX(ARREST_SEQ) AS ARREST_SEQUENCE
+			              , ROW_NUMBER() OVER(ORDER BY COUNT(ARREST_SEQ) DESC, MAX(ARREST_SEQ) ASC) AS RNUM
+			           		FROM TB_WANTED_EVENT_ARREST 
+			          		WHERE USE_YN = '1'
+			                	AND REG_TS >= TRUNC(TO_DATE(#{startdate},'YYYYMMDD'))
+                				AND REG_TS < TRUNC(TO_DATE(#{enddate},'YYYYMMDD')+1)
+			       			GROUP BY DEPT_NM
+			              		, DEPT_SEQ
+			              		, TMAN_EMP_NM
+			              		, TMAN_EMP_SEQ
+			       ) A
+			 WHERE A.RNUM < 12
+		]]>
+	</select>
+	<select id="selectUserRanking" resultMap="selectRanking" parameterType="_int">
+		<![CDATA[
+			SELECT * FROM (
+								SELECT A.DEPT_SEQ
+						       , A.DEPT_NM
+						       , A.REG_USER_SEQ AS USER_SEQ
+						       , A.REG_USER_NM AS USER_NM
+						       , COUNT(A.ARREST_SEQ) AS TOTALSUM 
+						       , MAX(A.ARREST_SEQ) AS ARREST_SEQUENCE
+						       , ROW_NUMBER() OVER(ORDER BY COUNT(A.ARREST_SEQ) DESC, MAX(A.ARREST_SEQ) ASC) AS RNUM
+								FROM TB_WANTED_EVENT_ARREST A
+								WHERE USE_YN = '1'
+								     AND WANTED_EVENT_SEQ = #{eventSequence}
+								     AND WANTED_TYPE = '2'
+							    GROUP BY A.DEPT_SEQ
+								       , A.DEPT_NM
+								       , A.REG_USER_SEQ
+								       , A.REG_USER_NM
+							) B
+			WHERE B.TOTALSUM > 9 
+			AND  RNUM < 102
+		]]>
+	</select>
+	<resultMap id="selectRanking" type="com.gojls.ace.model.Ranking">
+		<constructor>
+			<idArg column="ARREST_SEQUENCE" javaType="_int" />
+			<arg column="TOTALSUM" javaType="_int" />
+			<arg column="USER_SEQ" javaType="string" />
+			<arg column="USER_NM" javaType="string" />
+			<arg column="DEPT_SEQ" javaType="string" />
+			<arg column="DEPT_NM" javaType="string" />
+		</constructor>
+	</resultMap>
+    
+	
+</mapper>

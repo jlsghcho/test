@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gojls.h1k.dao.H1KDao">
+
+	<select id="selectUserStampInfo" parameterType="stamp" resultType="map">
+		<![CDATA[		
+			SELECT A.H1K_STAMP_SEQ AS term
+				, CASE WHEN NVL(B.USER_SEQ, '0') <> '0' THEN 1 
+					     ELSE 0 END AS state  
+			FROM TB_H1K_STAMP A, TB_H1K_STAMP_SAVE B
+			WHERE A.H1K_STAMP_SEQ = B.H1K_STAMP_SEQ(+)
+			AND A.H1K_EVENT_SEQ = #{h1kEventSeq}
+			AND B.USER_SEQ(+) = #{userSeq}
+		]]>
+	</select>	
+
+	<select id="selectChildList" parameterType="String" resultType="user">
+		<![CDATA[			
+			  SELECT M.USER_ID AS userId, M.USER_SEQ AS userSeq, M.USER_NM AS userNm, M.GT_USER_TYPE AS userType
+		      FROM (
+					SELECT US.USER_ID, US.USER_SEQ, US.USER_NM, US.GT_USER_TYPE, 
+		      (SELECT COUNT(1) FROM TB_CLS_USER CU, TB_CLS_MST CM, TB_DEPT DE 
+		       WHERE CU.USER_SEQ = US.USER_SEQ AND CU.CLS_SEQ = CM.CLS_SEQ AND CM.DEPT_SEQ = DE.DEPT_SEQ
+		       AND CU.GT_USER_CLS_WORK_STATE IN ('US4001', 'US4003')
+		       AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+		       AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT
+		       AND CM.GT_CLS_STATE = 'CL1001'
+		       AND DE.GT_DEPT_COURSE = 'DP2001'
+		       ) AS cnt
+					FROM TB_US_USER US
+					WHERE US.PARENT_USER_SEQ = #{userSeq}
+					AND US.USE_YN = 1
+					AND US.SLEEP_FL = 0
+					ORDER BY US.BIRTHDAY
+		      ) M
+		      WHERE M.CNT > 0
+		]]>
+	</select>
+	
+	<select id="selectUserInfo" parameterType="user" resultType="user">
+		<![CDATA[
+			  SELECT M.USER_ID AS userId, M.USER_SEQ AS userSeq, M.USER_NM AS userNm, M.GT_USER_TYPE AS userType
+		      FROM (
+					SELECT US.USER_ID, US.USER_SEQ, US.USER_NM, US.GT_USER_TYPE, 
+		      (SELECT COUNT(1) FROM TB_CLS_USER CU, TB_CLS_MST CM, TB_DEPT DE 
+		       WHERE CU.USER_SEQ = US.USER_SEQ AND CU.CLS_SEQ = CM.CLS_SEQ AND CM.DEPT_SEQ = DE.DEPT_SEQ
+		       AND CU.GT_USER_CLS_WORK_STATE IN ('US4001', 'US4003')
+		       AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CU.START_DT AND CU.END_DT
+		       AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN CM.START_DT AND CM.END_DT
+		       AND CM.GT_CLS_STATE = 'CL1001'
+		       AND DE.GT_DEPT_COURSE = 'DP2001'
+		       ) AS cnt
+					FROM TB_US_USER US
+					WHERE US.USER_SEQ = #{userSeq}
+					AND US.USE_YN = 1
+					AND US.SLEEP_FL = 0
+					ORDER BY US.BIRTHDAY
+		      ) M
+		      WHERE M.CNT > 0			
+		]]>
+	</select>
+	
+	
+	<select id="selectH1KTimeInfo" parameterType="time" resultType="time">
+		<![CDATA[
+			SELECT FLOOR(TIME_TOTAL/60) AS totalTime
+				, FLOOR((MONTH_SUM3+MONTH_SUM4+MONTH_SUM5)/60) AS term1
+				, FLOOR((MONTH_SUM6+MONTH_SUM7+MONTH_SUM8)/60) AS term2
+				, FLOOR((MONTH_SUM9+MONTH_SUM10+MONTH_SUM11)/60) AS term3
+				, FLOOR((MONTH_SUM12+MONTH_SUM1+MONTH_SUM2)/60) AS term4
+			FROM TB_H1K_TIME_TOTAL
+			WHERE H1K_EVENT_SEQ = #{h1kEventSeq}
+			AND USER_SEQ = #{userSeq}
+		]]>
+	</select>	
+		
+	<select id="selectH1KSurveySave" parameterType="survey" resultType="survey">
+		<![CDATA[
+			SELECT H1K_SURVEY_SAVE_SEQ AS h1kSurveySaveSeq
+				,H1K_SURVEY_SEQ AS h1kSurveySeq
+				,SURVEY_ANSWER AS surveyAnswer
+				,SURVEY_FNISH_YN AS surveyFinishYn
+				,USER_SEQ AS userSeq
+				,FLOOR(ADD_TIME/60) AS addTime
+				,ADD_TIME AS addTimeSec
+				,TO_CHAR(REG_TS,'YYYY-MM-DD') AS regTs
+				,REG_USER_SEQ AS regUserSeq
+				,REG_USER_NM AS regUserNm
+			FROM TB_H1K_SURVEY_SAVE
+			WHERE H1K_SURVEY_SEQ = (SELECT H1K_SURVEY_SEQ FROM TB_H1K_SURVEY WHERE H1K_EVENT_SEQ = #{h1kEventSeq} AND SURVEY_SYSCODE = #{surveySysCode})
+			AND USER_SEQ = #{userSeq}
+		]]>
+	</select>
+	
+	<select id="selectH1KSurveySeq" parameterType="survey" resultType="int">
+		<![CDATA[
+			SELECT H1K_SURVEY_SEQ AS h1kSurveySeq
+			FROM TB_H1K_SURVEY
+			WHERE H1K_EVENT_SEQ = #{h1kEventSeq}
+			AND SURVEY_SYSCODE = #{surveySysCode}
+		]]>
+	</select>	
+	
+	<insert id="insertH1KSurveySave" parameterType="survey">
+		<![CDATA[
+		INSERT INTO TB_H1K_SURVEY_SAVE
+		( H1K_SURVEY_SAVE_SEQ,H1K_SURVEY_SEQ,SURVEY_ANSWER,SURVEY_FNISH_YN,USER_SEQ,ADD_TIME,REG_TS,REG_USER_SEQ,REG_USER_NM )
+		VALUES 
+		( H1K_SURVEY_SAVE_SEQ.NEXTVAL ,#{h1kSurveySeq}, #{surveyAnswer}, #{surveyFinishYn}, #{userSeq}, #{addTime}, SYSTIMESTAMP , #{regUserSeq}, #{regUserNm})
+		]]>
+			<selectKey keyProperty="h1kSurveySaveSeq" resultType="integer" order="AFTER"> 
+				SELECT H1K_SURVEY_SAVE_SEQ.CURRVAL FROM DUAL 
+			</selectKey>
+	</insert>
+	
+	
+	<insert id="insertH1KTimeDay" parameterType="survey">
+		<![CDATA[
+		INSERT INTO TB_H1K_TIME_DAY
+		( H1K_DAY_SEQ,GT_STATS_TYPE,USER_SEQ,BASE_DT,TIME_SUM,NOTE,REG_TS,REG_USER_SEQ,REG_USER_NM)
+		VALUES 
+		( H1K_DAY_SEQ.NEXTVAL ,#{gtStatsType}, #{userSeq}, TO_CHAR(SYSTIMESTAMP, 'YYYYMMDD'), #{addTime}, #{h1kSurveySaveSeq}, SYSTIMESTAMP , #{regUserSeq}, #{regUserNm})
+		]]>
+	</insert>
+	
+	<delete id="deleteH1KSurveySave" parameterType="survey">
+		<![CDATA[
+		DELETE FROM TB_H1K_SURVEY_SAVE
+		WHERE H1K_SURVEY_SAVE_SEQ = #{h1kSurveySaveSeq}
+		AND USER_SEQ = #{userSeq}
+		]]>
+	</delete>
+</mapper>
