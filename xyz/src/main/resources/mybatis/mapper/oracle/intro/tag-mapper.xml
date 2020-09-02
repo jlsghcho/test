@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.math.index.dao.IndexDao">
+	<select id="selTagList" resultType="tag">
+	<![CDATA[ SELECT BRANCH_TAG_CODE AS tagCode, TAG_NM AS tagNm FROM GOJLS.TB_BRANCH_TAG WHERE MAIN_VIEW > 0 AND VIEW_YN=1 ORDER BY MAIN_VIEW ASC ]]>
+	</select>
+</mapper>

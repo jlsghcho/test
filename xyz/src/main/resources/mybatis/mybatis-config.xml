@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+	<typeAliases>
+		<typeAlias alias="dept" type="com.gojls.math.index.model.DeptModel"/>
+		<typeAlias alias="notice" type="com.gojls.math.index.model.NoticeModel"/>
+		<typeAlias alias="user" type="com.gojls.math.index.model.UserModel"/>
+		<typeAlias alias="reservation" type="com.gojls.math.index.model.ReservationModel"/>
+		<typeAlias alias="ad" type="com.gojls.math.index.model.AdModel"/>
+		<typeAlias alias="tag" type="com.gojls.math.index.model.TagModel"/>
+	</typeAliases>
+</configuration>

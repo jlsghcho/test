@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.math.index.dao.IndexDao">
+	<select id="selUserList" parameterType="user" resultType="user">
+	<![CDATA[
+		SELECT A.USER_SEQ AS userSeq
+		    , A.USER_NM AS userNm
+		    , A.GT_GRADE AS gtGrade
+		    , A.GT_USER_TYPE AS gtUserType
+		    , ( 
+		        SELECT COUNT(1)
+		        FROM TB_CLS_USER B , TB_CLS_MST C
+		        WHERE B.USER_SEQ = A.USER_SEQ
+		            AND B.END_DT >= B.START_DT
+		            AND B.END_DT >= TO_CHAR(ADD_MONTHS(SYSTIMESTAMP, -12),'YYYYMMDD')
+		            AND B.CLS_SEQ = C.CLS_SEQ
+		            AND C.GT_CLS_STATE= 'CL1001'
+		            AND C.USE_YN = 1
+		    )  AS gtUserClsCnt
+		    , ( 
+		        SELECT WMSYS.WM_CONCAT(C.COURSE_SEQ)
+		        FROM TB_CLS_USER B , TB_CLS_MST C
+		        WHERE B.USER_SEQ = A.USER_SEQ
+		            AND B.END_DT >= B.START_DT
+		            AND B.END_DT >= TO_CHAR(ADD_MONTHS(SYSTIMESTAMP, -12),'YYYYMMDD')
+		            AND B.CLS_SEQ = C.CLS_SEQ
+		            AND C.GT_CLS_STATE= 'CL1001'
+		            AND C.USE_YN = 1
+		    )  AS arrUserClsCourse
+		FROM GAIMS.TB_US_USER A
+		WHERE A.USE_YN = 1
+		 	]]>
+		<choose>
+		<when test="gtUserType == 'US6001'" >
+		    AND A.USER_SEQ =  #{userSeq}
+		</when>
+		<otherwise>
+		    AND A.PARENT_USER_SEQ = #{userSeq}
+		</otherwise>
+		</choose>
+		<![CDATA[
+		ORDER BY A.USER_NM
+    ]]>
+	</select>
+
+	<select id="selClsUserCnt" parameterType="user" resultType="int">
+		SELECT
+			COUNT(1)
+		FROM TB_CLS_USER CU, TB_CLS_MST CM
+		WHERE CU.CLS_SEQ = CM.CLS_SEQ
+		AND CU.USER_SEQ = #{userSeq}
+		AND CM.DEPT_SEQ = #{deptSeq}
+		AND CU.END_DT >= CU.START_DT
+		AND CM.END_DT >= CM.START_DT
+	</select>
+</mapper>

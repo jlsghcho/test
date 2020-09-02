@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.math.index.dao.IndexDao">
+	<select id="selDeptList" parameterType="dept" resultType="dept">
+	<![CDATA[
+		SELECT Z.DELEGATE_WEB_DEPT_SEQ AS dltDeptSeq
+		    , Z.DELEGATE_WEB_NAME AS dltDeptNm
+		    , WMSYS.WM_CONCAT(Z.DEPT_SEQ) AS arrDeptSeq
+		    , WMSYS.WM_CONCAT(Z.DEPT_NM) AS arrDeptNm
+		    , WMSYS.WM_CONCAT(Z.GT_DEPT_COURSE) AS arrDeptCourse
+		    , WMSYS.WM_CONCAT(DISTINCT Z.GT_DEPT_TYPE) AS arrDeptType
+		    , WMSYS.WM_CONCAT(DISTINCT Z.AREA_CODE1) AS arrDeptAreaCode1
+		    , WMSYS.WM_CONCAT(DISTINCT Z.AREA_CODE2) AS arrDeptAreaCode2
+		    , WMSYS.WM_CONCAT(Z.TEL) AS arrDeptTel
+		    , WMSYS.WM_CONCAT(DISTINCT Z.ADDR) AS arrDeptAddr
+		    , WMSYS.WM_CONCAT(Z.RESERVATION_CNT) AS arrReservation
+		    , WMSYS.WM_CONCAT(Z.DELEGATE_WEB_INFO_DISPLAY_YN) AS arrDisplayYn
+		FROM (  
+		    SELECT DD.DELEGATE_WEB_DEPT_SEQ
+		        , DD.DELEGATE_WEB_NAME
+		        , D.DEPT_SEQ
+		        , D.DEPT_NM
+		        , (CASE WHEN D.DEPT_SEQ = 4500000 OR D.DEPT_SEQ = 4600000 OR D.DEPT_SEQ = 4900000 OR D.DEPT_SEQ=10003367 THEN CONCAT(D.GT_DEPT_COURSE, ',DP2004') ELSE D.GT_DEPT_COURSE END) GT_DEPT_COURSE 
+		        , D.AREA_CODE1
+		        , D.AREA_CODE2
+		        , D.GT_DEPT_TYPE
+		        , DC.TEL1 AS TEL
+		        , (DC.ADDR1 ||' '|| DC.ADDR2) AS ADDR
+		        , (
+                	SELECT COUNT(1) 
+                	FROM GAIMS.TB_RESERVATION_MST B 
+                	WHERE B.ONLINE_YN = 1 
+                		AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN B.ONLINE_START_DT AND B.ONLINE_END_DT
+                    	AND B.START_DT > TO_CHAR(SYSDATE, 'YYYYMMDD')
+                    	AND B.USE_YN = 1
+                    	AND B.DEPT_SEQ = D.DEPT_SEQ
+                ) RESERVATION_CNT
+                , D.DELEGATE_WEB_INFO_DISPLAY_YN 
+                , ROW_NUMBER() OVER(PARTITION BY D.DEPT_SEQ ORDER BY DC.DEPT_CONTACT_SEQ) AS RN
+		    FROM GAIMS.TB_DEPT DD
+		        , GAIMS.TB_DEPT D
+		        , GAIMS.TB_DEPT_CONTACT DC
+		    WHERE dd.DELEGATE_WEB_DEPT_SEQ = dd.DEPT_SEQ
+		        AND DD.dept_seq = D.DELEGATE_WEB_DEPT_SEQ(+)
+		        AND D.DEPT_SEQ = DC.DEPT_SEQ
+                AND DD.GT_WEB_OPEN = 'DP1001'
+                AND D.GT_WEB_OPEN = 'DP1001'
+                AND DD.USE_YN = 1
+		) Z
+		WHERE RN = 1
+		GROUP BY Z.DELEGATE_WEB_DEPT_SEQ
+		    , Z.DELEGATE_WEB_NAME
+		ORDER BY Z.DELEGATE_WEB_NAME
+    	]]>
+	</select>
+	
+	<select id="selNoticeView" parameterType="integer" resultType="notice">
+	<![CDATA[
+          SELECT 
+            DECODE(A.NOTICE_TYPE_CODE,'NT1001','NTB001','NTB002') AS noticeTypeCode
+            , B.TITLE AS title
+            , B.THUMBNAIL_PATH AS imageUrl
+            , TO_CHAR(A.REG_TS, 'YYYY.MM.DD') AS registerDate
+            , B.CONTENTS AS contents
+            , A.DEPT_SEQ deptSeq
+            , A.BRANCH_NOTICE_SEQ AS noticeNo
+		    , (SELECT SUBSTR(XMLAGG(XMLELEMENT(COL,',',BRANCH_TAG_CODE )).EXTRACT('//text()').GETSTRINGVAL(),2) FROM GOJLS.TB_BRANCH_NOTICE_TAG WHERE BRANCH_NOTICE_CONTNT_SEQ=B.BRANCH_NOTICE_CONTNT_SEQ) tag
+          FROM GOJLS.TB_BRANCH_NOTICE A
+            , GOJLS.TB_BRANCH_NOTICE_CONTNT B
+          WHERE A.BRANCH_NOTICE_SEQ = #{param_notice_seq}
+            AND A.BRANCH_NOTICE_CONTNT_SEQ = B.BRANCH_NOTICE_CONTNT_SEQ
+   	]]>
+	</select>
+	
+	<update id="upNoticeView" parameterType="integer">
+	<![CDATA[ UPDATE GOJLS.TB_BRANCH_NOTICE SET VIEW_CNT = VIEW_CNT+1 WHERE BRANCH_NOTICE_SEQ = #{param_notice_seq}  ]]>
+	</update>
+</mapper>

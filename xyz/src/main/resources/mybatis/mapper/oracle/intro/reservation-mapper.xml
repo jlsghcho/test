@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gojls.math.index.dao.IndexDao">
+	<select id="selReservationUserList" parameterType="String" resultType="reservation">
+	<![CDATA[
+		SELECT 
+		    B.GT_RESERVATION_TYPE AS gtReservationType
+		    , C.DEPT_NM AS deptNm
+		    , B.TITLE AS title
+		    , A.START_DT AS startDt
+		    , A.START_TIME AS startTime
+		    , A.END_TIME AS endTime
+		    , B.GT_TIME_HH AS gtTimeHH
+		    , B.GT_TIME_MM AS gtTimeMM
+		    , B.RUN_TIME AS runTime
+		    , B.POSITION AS position
+		    , B.AMOUNT AS amount
+		    , A.USER_RESERVATION_SEQ AS userReservationSeq
+		    , B.RESERVATION_SEQ AS reservationSeq
+		    , (SELECT D.GT_CHARGE_CHK FROM GAIMS.TB_MO_CHARGE_USER D WHERE D.USER_RESERVATION_SEQ = A.USER_RESERVATION_SEQ ) AS gtChargeChk
+		    , (CASE WHEN B.START_DT < TO_CHAR(SYSDATE,'YYYYMMDD') THEN 'Y' ELSE 'N' END) AS oldYn
+		FROM GAIMS.TB_RESERVATION_USER A
+		    , GAIMS.TB_RESERVATION_MST B
+		    , GAIMS.TB_DEPT C
+		WHERE A.USER_SEQ = #{param_user_seq}
+		    AND A.RESERVATION_SEQ = B.RESERVATION_SEQ
+		    AND B.DEPT_SEQ = C.DEPT_SEQ
+		ORDER BY B.START_DT DESC
+	]]>
+	</select>
+	
+	<select id="selReservationDeptList" parameterType="reservation" resultType="reservation">	
+	<![CDATA[
+		SELECT A.RESERVATION_SEQ AS reservationSeq
+		    , A.TITLE AS title
+		    , A.GT_RESERVATION_TYPE AS gtReservationType
+		    , A.DEPT_SEQ AS deptSeq
+		    , A.START_DT AS startDt
+		    , A.END_DT AS endDt
+		    , A.GT_TIME_HH AS gtTimeHH
+		    , A.GT_TIME_MM AS gtTimeMM
+		    , A.START_TIME AS startTime
+		    , A.END_TIME AS endTime
+		    , A.POSITION AS position
+		    , A.LIMITED_CNT AS limitCnt
+		    , A.AMOUNT AS amount
+		    , A.ONLINE_START_DT AS onlineStartDt
+		    , A.ONLINE_END_DT AS onlineEndDt
+		    , A.AGENDA_NOTE AS agendaNote
+		    , A.ANNOUNCE_NOTE AS announceNote
+		    /*, (
+		        SELECT WMSYS.WM_CONCAT(B.GT_USER_TYPE || DECODE(B.GT_GRADE, NULL, '', ':'|| B.GT_GRADE) || DECODE(B.COURSE_SEQ, NULL, '', ':'|| B.COURSE_SEQ))
+		        FROM GAIMS.TB_RESERVATION_LEV B
+		        WHERE A.RESERVATION_SEQ = B.RESERVATION_SEQ
+		            AND B.GT_GRADE IS NOT NULL    
+		    ) AS arrCompare*/
+		    , (
+                SELECT C.USER_RESERVATION_SEQ
+                FROM GAIMS.TB_RESERVATION_USER C 
+                WHERE C.RESERVATION_SEQ=A.RESERVATION_SEQ
+                    AND C.USER_SEQ = #{param_user_seq}
+                    AND C.USE_YN = 1
+            ) AS userReservationSeq
+            , (
+                SELECT D.GT_CHARGE_CHK
+                FROM GAIMS.TB_RESERVATION_USER C 
+                    , GAIMS.TB_MO_CHARGE_USER D
+                WHERE C.RESERVATION_SEQ = A.RESERVATION_SEQ
+                    AND C.USER_SEQ = #{param_user_seq}
+                    AND C.USE_YN = 1
+                    AND C.USER_RESERVATION_SEQ = D.USER_RESERVATION_SEQ
+            ) AS gtChargeChk
+		FROM GAIMS.TB_RESERVATION_MST A
+		WHERE A.DEPT_SEQ = #{param_dept_seq}
+		    AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN A.ONLINE_START_DT AND A.ONLINE_END_DT
+		    AND A.END_DT  >= TO_CHAR(SYSDATE, 'YYYYMMDD')
+		    AND A.USE_YN = 1
+		    AND A.ONLINE_YN = 1
+		    AND (
+        	  	(SELECT COUNT(1) FROM TB_RESERVATION_LEV RL WHERE A.RESERVATION_SEQ = RL.RESERVATION_SEQ AND RL.USE_YN = 1) = 0	
+			  	OR
+	]]>
+		<choose>
+		  	<when test="param_cls_user_cnt == 0"><!-- 비재원생 -->
+		  	EXISTS (
+		  		SELECT * 
+		  		FROM GAIMS.TB_RESERVATION_LEV RL 
+		  		WHERE A.RESERVATION_SEQ = RL.RESERVATION_SEQ 
+		  		AND RL.USE_YN = 1 
+		  		AND RL.GT_RESERVATION_LEV_TYPE = 'RV2004' 
+		  		AND RL.GT_USER_TYPE = 'RV3002'
+	    		AND EXISTS (SELECT * FROM GAIMS.TB_RESERVATION_LEV WHERE RESERVATION_SEQ = RL.RESERVATION_SEQ AND USE_YN = 1 AND GT_RESERVATION_LEV_TYPE = 'RV2001' AND (GT_GRADE = 'ALL' OR GT_GRADE = #{param_gt_grade}))
+		  	)
+		  	</when>
+		  	<otherwise><!--재원생 -->
+		  	EXISTS (
+		  		SELECT * 
+		  		FROM GAIMS.TB_RESERVATION_LEV RL 
+		  		WHERE A.RESERVATION_SEQ = RL.RESERVATION_SEQ 
+		  		AND RL.USE_YN = 1 
+		  		AND RL.GT_RESERVATION_LEV_TYPE = 'RV2003' 
+		  		AND (
+	              RL.COURSE_SEQ = '0' 
+	              OR RL.COURSE_SEQ IN (
+		    		SELECT
+					    CM.COURSE_SEQ
+					FROM GAIMS.TB_CLS_USER CU, GAIMS.TB_CLS_MST CM
+					WHERE CU.CLS_SEQ = CM.CLS_SEQ
+					AND CU.USER_SEQ = #{param_user_seq}
+					AND CM.DEPT_SEQ = #{param_dept_seq}
+					AND CU.END_DT >= CU.START_DT
+					AND CU.END_DT >= TO_CHAR(SYSDATE, 'YYYYMMDD')
+					AND CM.GT_CLS_STATE = 'CL1001'
+					AND CM.END_DT >= CM.START_DT
+					AND CM.END_DT >= TO_CHAR(SYSDATE, 'YYYYMMDD')
+	    			)
+	    		)
+	    		AND EXISTS (SELECT * FROM GAIMS.TB_RESERVATION_LEV WHERE RESERVATION_SEQ = RL.RESERVATION_SEQ AND USE_YN = 1 AND GT_RESERVATION_LEV_TYPE = 'RV2001' AND (GT_GRADE = 'ALL' OR GT_GRADE = #{param_gt_grade}))
+	    	)
+		  	</otherwise>
+		</choose>
+	<![CDATA[
+		)
+	]]>
+	</select>
+	
+	<select id="selReservationUserChk" parameterType="reservation" resultType="integer">
+	<![CDATA[ SELECT COUNT(1) FROM GAIMS.TB_RESERVATION_USER A WHERE A.RESERVATION_SEQ = #{reservationSeq} AND A.USER_SEQ = #{param_user_seq} AND A.USE_YN = 1 ]]>
+	</select>
+	
+	<select id="selReservationLimitChk" parameterType="reservation" resultType="integer">
+	<![CDATA[ SELECT COUNT(1) FROM TB_RESERVATION_MST A WHERE A.RESERVATION_SEQ = #{reservationSeq} AND NVL(A.LIMITED_CNT,0) > (SELECT COUNT(1) FROM TB_RESERVATION_USER B WHERE B.USE_YN = 1 AND B.RESERVATION_SEQ = A.RESERVATION_SEQ ) ]]>
+	</select>
+	
+	<select id="selReservationDept" parameterType="reservation" resultType="integer">
+	<![CDATA[ SELECT DEPT_SEQ AS param_dept_seq FROM GAIMS.TB_RESERVATION_MST WHERE RESERVATION_SEQ = #{reservationSeq} ]]>
+	</select>
+	
+	<select id="selReservationDeptChk" parameterType="reservation" resultType="integer">
+	<![CDATA[ SELECT COUNT(1) FROM GAIMS.TB_DEPT_USER WHERE USER_SEQ = #{param_user_seq} AND DEPT_SEQ = #{param_dept_seq} ]]>
+	</select>
+	
+	<insert id="insReservationDept" parameterType="reservation">
+	<![CDATA[ 
+	INSERT INTO TB_DEPT_USER(DEPT_SEQ, USER_SEQ, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_NM)
+	VALUES(#{param_dept_seq}, #{param_user_seq}, 1, SYSTIMESTAMP, #{param_reg_seq}, #{param_reg_nm} ||'[예]', SYSTIMESTAMP, #{param_reg_seq}, #{param_reg_nm} ||'[예]')
+	]]>
+	</insert>
+	
+	<select id="selReservationPayChk" parameterType="reservation" resultType="reservation">
+	<![CDATA[ SELECT AMOUNT AS amount, START_DT AS startDt, GAIMS.COMMON_PKG.CODE_NM(GT_RESERVATION_TYPE) AS gtReservationTypeNm FROM GAIMS.TB_RESERVATION_MST WHERE RESERVATION_SEQ = #{reservationSeq} ]]>
+	</select>
+	
+	<insert id="insReservationUser" parameterType="reservation">
+		<selectKey keyProperty="userReservationSeq" resultType="int" order="BEFORE">
+			SELECT USER_RESERVATION_SEQ.NEXTVAL FROM DUAL
+		</selectKey>
+		<![CDATA[
+		INSERT INTO GAIMS.TB_RESERVATION_USER(USER_RESERVATION_SEQ, USER_SEQ, DEPT_SEQ, RESERVATION_SEQ, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_NM)
+		VALUES(#{userReservationSeq}, #{param_user_seq}, #{param_dept_seq}, #{reservationSeq}, 1, SYSTIMESTAMP, #{param_reg_seq}, #{param_reg_nm}, SYSTIMESTAMP, #{param_reg_seq}, #{param_reg_nm} )
+		]]>
+	</insert>
+	
+	<select id="selReservationPayIs" parameterType="reservation" resultType="integer">
+	<![CDATA[ SELECT COUNT(1) FROM GAIMS.TB_MO_CHARGE_USER WHERE USER_RESERVATION_SEQ = #{userReservationSeq} ]]>
+	</select>
+	
+	<insert id="insReservationPay" parameterType="reservation">
+	<![CDATA[
+		INSERT INTO GAIMS.TB_MO_CHARGE_USER 
+		(USER_CHARGE_SEQ, CHARGE_NM, DEPT_SEQ, CHARGE_MONTH, GT_CHARGE_TYPE, AMOUNT, USER_SEQ, GT_CHARGE_CHK, USE_YN, REG_TS, REG_USER_SEQ, REG_USER_NM, MOD_TS, MOD_USER_SEQ, MOD_USER_NM, USER_RESERVATION_SEQ, START_DT, END_DT)
+		VALUES(USER_CHARGE_SEQ.NEXTVAL, #{param_charge_nm}, #{param_dept_seq}, #{param_charge_month}, 'PA4002', #{amount}, #{param_user_seq}, 'PA2001' ,1, SYSTIMESTAMP, #{param_reg_seq}, #{param_reg_nm}, SYSTIMESTAMP, #{param_reg_seq}, #{param_reg_nm}, #{userReservationSeq}, #{startDt}, #{startDt})
+	]]>
+	</insert>
+	
+	<select id="selReservationPayList" parameterType="reservation" resultType="reservation">
+	<![CDATA[
+		SELECT A.USER_RESERVATION_SEQ AS userReservationSeq
+		    , B.GT_CHARGE_CHK AS gtChargeChk
+		    , NVL(B.USER_CHARGE_SEQ,0) AS userChargeSeq
+		FROM GAIMS.TB_RESERVATION_USER A
+		    , GAIMS.TB_MO_CHARGE_USER B
+		WHERE A.RESERVATION_SEQ = #{reservationSeq}
+		    AND A.USER_SEQ = #{param_user_seq}
+		    AND A.USER_RESERVATION_SEQ = B.USER_RESERVATION_SEQ(+)	
+	]]>
+	</select>
+	
+	<delete id="delUserCharge" parameterType="reservation"><![CDATA[ DELETE FROM GAIMS.TB_MO_CHARGE_USER WHERE USER_CHARGE_SEQ = #{userChargeSeq} ]]></delete>
+	<delete id="delReservation" parameterType="reservation"><![CDATA[ DELETE FROM GAIMS.TB_RESERVATION_USER WHERE USER_RESERVATION_SEQ = #{userReservationSeq} ]]></delete>
+</mapper>
